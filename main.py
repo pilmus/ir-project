@@ -31,7 +31,7 @@ def iter_msmarco_docs() -> Iterable[Dict]:
 
 
 def create_writer(index: FileIndex) -> IndexWriter:
-    w = index.writer(limitmb=4000, procs=4)
+    w = index.writer(limitmb=16000, procs=1)
 
     return w
 

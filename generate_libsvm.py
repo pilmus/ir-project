@@ -1,3 +1,4 @@
+import ctypes
 from typing import List, Iterable, Tuple
 import sys
 import csv
@@ -55,53 +56,20 @@ def compute_bm25(query_terms: List[str], index_reader: IndexReader, doc_id: str,
 
     return scores
 
-#def lmir_jm(term
-
-# def compute_lmir_jm(query_terms: List[str], index_reader: IndexReader, doc_id: str, sm_param=0.1):
-#     doc_vector = index_reader.get_document_vector(doc_id)
-#
-#
-#     # denominator of smoothing constant
-#     corpus_prob = 0
-#     for term in doc_vector:
-#         corpus_prob += index_reader.get_term_counts(term, analyzer=None)[1] / index_reader.stats()['total_terms']
-#     corpus_prob = 1 - corpus_prob
-#
-#     # numerator of smoothing constant
-#     doc_prob - 0
-#     for term in doc_vector:
-#         doc_prob +=
-#
-#
-#     for term in query_terms:
-# term_corpus_prob = index_reader.get_term_counts(term, analyzer=None)[1] / index_reader.stats()['total_terms']
-#         if term in doc_vector:
-#             (1-sm_param) *doc_vector['term'] / len(d.raw()) + sm_param * term_corpus_pr
-#             # smoothed_prob(word|document)
-#             continue
-#         else:
-#             # get term collection frequency
-#             term_corpus_prob = index_reader.get_term_counts(term, analyzer=None)[1] / index_reader.stats()['total_terms']
-#
-#
-#
-#             # constant * prob(term|corpus)
-#             continue
-#
-#     pass
 
 
 def generate_examples(qrels_path: str,
                       top100_path: str,
                       queries_path: str) -> Iterable[Tuple[str, str, str, bool]]:
-    csv.field_size_limit(sys.maxsize)
+    # csv.field_size_limit(sys.maxsize)
+    csv.field_size_limit(int(ctypes.c_ulong(-1).value // 2))
     stats = {'positive_example_not_in_top100': 0,
              'positive_example_removed_from_top100': 0}
 
     # query IDs mapped to the queries
     print(f'Loading {queries_path}...')
     queries = {}
-    with open(queries_path) as queries_file:
+    with open(queries_path, encoding='utf-8') as queries_file:
         for line in tqdm(queries_file.readlines()):
             (qid, query) = line.split('\t')
             queries[qid] = query
@@ -173,7 +141,7 @@ def worker(index_path: str, input_queue: multiprocessing.Queue, output_queue: mu
     while True:
         try:
             item = input_queue.get(block=True)
-            line = generate_feature_vector(index_reader, **item)
+            line = generate_feature_vector(index_reader, *item)
 
             output_queue.put(line)
         except ValueError:
@@ -184,9 +152,9 @@ def worker(index_path: str, input_queue: multiprocessing.Queue, output_queue: mu
 def main():
     base_path = os.path.join(os.path.dirname(__file__), 'data')
     paths = {
-        'qrels_path': os.path.join(base_path, 'msmarco-doctrain-qrels.tsv'),
-        'top100_path': os.path.join(base_path, 'msmarco-doctrain-top100'),
-        'queries_path': os.path.join(base_path, 'msmarco-doctrain-queries.tsv'),
+        'qrels_path': os.path.join(base_path, 'msmarco-doctrain-qrels.tsv','msmarco-doctrain-qrels.tsv'),
+        'top100_path': os.path.join(base_path, 'msmarco-doctrain-top100', 'msmarco-doctrain-top100'),
+        'queries_path': os.path.join(base_path, 'msmarco-doctrain-queries.tsv', 'queries.doctrain.tsv'),
     }
 
     index_path = sys.argv[1]
@@ -201,6 +169,7 @@ def main():
         for (query_id, query, doc_id, is_positive) in tqdm(generate_examples(**paths)):
             input_queue.put((query_id, query, doc_id, is_positive))
             num_examples += 1
+        print(f"Generated {num_examples} examples.")
 
         print('Receiving results...')
         for line in tqdm(output_queue.get(block=True)):

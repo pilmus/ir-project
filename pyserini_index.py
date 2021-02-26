@@ -54,6 +54,7 @@ def compute_doc_tf(index_reader, query, document_id) -> int:
     query_terms = index_reader.analyze(query)
     doc_vector = index_reader.get_document_vector(document_id)
 
+
     for term in query_terms:
         tf = doc_vector.get(term, 0)
         val += tf

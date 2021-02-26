@@ -4,6 +4,7 @@ import csv
 import random
 import os
 import mmap
+import multiprocessing
 
 from pyserini.index import IndexReader
 from pyserini.search import Document
@@ -144,6 +145,42 @@ def generate_examples(qrels_path: str,
         yield query_id, query, negative_doc_id, False
 
 
+def generate_feature_vector(index_reader: IndexReader, query_id: str, query: str, doc_id: str, is_positive: bool) -> str:
+    query_terms = index_reader.analyze(query)
+
+    feature_vector = [
+        np.sum(compute_tf(query_terms, index_reader, doc_id)),
+        np.sum(compute_idf(query_terms, index_reader)),
+        np.sum(compute_tf_idf(query_terms, index_reader, doc_id)),
+        compute_document_length(index_reader, doc_id),
+        np.sum(compute_bm25(query_terms, index_reader, doc_id)),
+    ]
+
+    line = [
+        '1' if is_positive else '0',
+        f'qid:{query_id}',
+    ]
+
+    for i, feature in enumerate(feature_vector):
+        line.append(f'{i}:{feature}')
+
+    return ' '.join(line) + '\n'
+
+
+def worker(index_path: str, input_queue: multiprocessing.Queue, output_queue: multiprocessing.Queue):
+    print(f'Worker (pid={os.getpid()}) started')
+    index_reader = IndexReader(index_path)
+    while True:
+        try:
+            item = input_queue.get(block=True)
+            line = generate_feature_vector(index_reader, **item)
+
+            output_queue.put(line)
+        except ValueError:
+            print(f'Worker (pid={os.getpid()}) stopping')
+            break
+
+
 def main():
     base_path = os.path.join(os.path.dirname(__file__), 'data')
     paths = {
@@ -152,29 +189,31 @@ def main():
         'queries_path': os.path.join(base_path, 'msmarco-doctrain-queries.tsv'),
     }
 
-    index_reader = IndexReader(sys.argv[1])
+    index_path = sys.argv[1]
 
     with open(sys.argv[2], 'w') as output_file:
-        for (query_id, query, doc_id, is_positive) in generate_examples(**paths):
-            query_terms = index_reader.analyze(query)
+        input_queue = multiprocessing.Queue()
+        output_queue = multiprocessing.Queue()
+        pool = multiprocessing.get_context('spawn').Pool(multiprocessing.cpu_count(), worker, (index_path, input_queue, output_queue))
 
-            feature_vector = [
-                np.sum(compute_tf(query_terms, index_reader, doc_id)),
-                np.sum(compute_idf(query_terms, index_reader)),
-                np.sum(compute_tf_idf(query_terms, index_reader, doc_id)),
-                compute_document_length(index_reader, doc_id),
-                np.sum(compute_bm25(query_terms, index_reader, doc_id)),
-            ]
+        print('Generating examples...')
+        num_examples = 0
+        for (query_id, query, doc_id, is_positive) in tqdm(generate_examples(**paths)):
+            input_queue.put((query_id, query, doc_id, is_positive))
+            num_examples += 1
 
-            line = [
-                '1' if is_positive else '0',
-                f'qid:{query_id}',
-            ]
+        print('Receiving results...')
+        for line in tqdm(output_queue.get(block=True)):
+            output_file.write(line)
+            num_examples -= 1
 
-            for i, feature in enumerate(feature_vector):
-                line.append(f'{i}:{feature}')
+            if num_examples == 0:
+                break
 
-            output_file.write(' '.join(line) + '\n')
+        input_queue.close()
+        output_queue.close()
+        pool.close()
+        pool.join()
 
 
 if __name__ == '__main__':

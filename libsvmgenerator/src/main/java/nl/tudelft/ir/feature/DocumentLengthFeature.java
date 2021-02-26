@@ -1,4 +1,4 @@
-package nl.tudelft.ir;
+package nl.tudelft.ir.feature;
 
 import io.anserini.index.IndexReaderUtils;
 import org.apache.lucene.index.IndexReader;
@@ -13,7 +13,7 @@ public class DocumentLengthFeature implements Feature {
     }
 
     @Override
-    public float score(List<String> queryTerms, String docId) {
+    public double score(List<String> queryTerms, String docId) {
         return IndexReaderUtils.documentRaw(reader, docId).length();
     }
 }

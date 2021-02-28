@@ -23,10 +23,6 @@ public class Document {
         return vector;
     }
 
-    public long getFrequency(String term) {
-        return vector.get(term);
-    }
-
     public Set<String> getTerms() {
         return vector.keySet();
     }

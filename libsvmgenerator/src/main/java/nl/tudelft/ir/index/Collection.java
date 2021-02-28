@@ -3,47 +3,45 @@ package nl.tudelft.ir.index;
 import java.util.Map;
 
 public class Collection {
-    private final Index index;
 
-    private final long size;
+    private final long numDocuments;
     private final long totalTermCount;
 
     private final Map<String, Long> collectionFrequenciesCache;
     private final Map<String, Integer> documentFrequenciesCache;
 
-    public Collection(Index index, Map<String, Long> collectionFrequenciesCache, Map<String, Integer> documentFrequenciesCache) {
-        this.index = index;
-        this.size = index.getCollectionSize();
-        this.totalTermCount = index.getTotalTermCount();
+    public Collection(long numDocuments, long totalTermCount, Map<String, Long> collectionFrequenciesCache, Map<String, Integer> documentFrequenciesCache) {
+        this.numDocuments = numDocuments;
+        this.totalTermCount = totalTermCount;
         this.collectionFrequenciesCache = collectionFrequenciesCache;
         this.documentFrequenciesCache = documentFrequenciesCache;
     }
 
-    public long getSize() {
-        return size;
+    public long getNumDocuments() {
+        return numDocuments;
     }
 
     public long getTotalTermCount() {
         return totalTermCount;
     }
 
-    public long getFrequency(String term) {
+    public long getCollectionFrequency(String term) {
         Long frequency = collectionFrequenciesCache.get(term);
 
-        if (frequency != null) {
-            return frequency;
+        if (frequency == null) {
+            throw new RuntimeException("Could not find collection frequency of term " + term);
         }
 
-        return index.getCollectionFrequency(term);
+        return frequency;
     }
 
     public int getDocumentFrequency(String term) {
         Integer frequency = documentFrequenciesCache.get(term);
 
-        if (frequency != null) {
-            return frequency;
+        if (frequency == null) {
+            throw new RuntimeException("Could not find document frequency of term " + term);
         }
 
-        return index.getDocumentFrequency(term);
+        return frequency;
     }
 }

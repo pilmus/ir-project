@@ -226,7 +226,7 @@ public class LibSvmFileGenerator {
             documentFrequenciesCache.put(term, index.getDocumentFrequency(term));
         }
 
-        Collection collection = new Collection(index, collectionFrequencyCache, documentFrequenciesCache);
+        Collection collection = new Collection(index.getNumDocuments(), index.getTotalTermCount(), collectionFrequencyCache, documentFrequenciesCache);
 
         for (int i = 0; i < features.size(); i++) {
             featureVec[i] = features.get(i).score(queryTerms, document, collection);

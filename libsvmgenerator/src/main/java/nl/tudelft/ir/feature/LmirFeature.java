@@ -2,14 +2,11 @@ package nl.tudelft.ir.feature;
 
 import nl.tudelft.ir.index.Collection;
 import nl.tudelft.ir.index.Document;
-import nl.tudelft.ir.index.Index;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import static java.lang.Math.max;
 
@@ -37,7 +34,7 @@ public class LmirFeature extends AbstractFeature {
         double summedLmirProbabilities = 0;
 
         for (String term : documentTerms) {
-            double corpusProbabilityForTerm = collection.getFrequency(term) / (double) totalTermCount;
+            double corpusProbabilityForTerm = collection.getCollectionFrequency(term) / (double) totalTermCount;
             double lmirProbabilityForTerm = smoothingMethod.smooth(term, documentVector, corpusProbabilityForTerm, documentLength);
 
             lmirProbabilities.put(term, lmirProbabilityForTerm);
@@ -53,7 +50,7 @@ public class LmirFeature extends AbstractFeature {
             if (lmirProbabilities.containsKey(term)) {
                 score *= lmirProbabilities.get(term);
             } else {
-                score *= alpha * collection.getFrequency(term) / totalTermCount;
+                score *= alpha * collection.getCollectionFrequency(term) / totalTermCount;
             }
         }
 

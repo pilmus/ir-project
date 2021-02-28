@@ -13,7 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class CachedIndex implements Index {
     private final IndexReader reader;
 
-    private final Map<String, Long> documentLengthCache = new ConcurrentHashMap<>();
+    private final Map<String, Integer> documentLengthCache = new ConcurrentHashMap<>();
     private final Map<String, Long> collectionFrequencyCache = Collections.synchronizedMap(new HashMap<>());
     private final Map<String, Integer> documentFrequencyCache = Collections.synchronizedMap(new HashMap<>());
 
@@ -32,16 +32,23 @@ public class CachedIndex implements Index {
 
     @Override
     public long getDocumentLength(String docId) {
-        Long documentLength = documentLengthCache.get(docId);
+        Integer documentLength = documentLengthCache.get(docId);
         if (documentLength != null) {
             return documentLength;
         }
 
-        documentLength = (long) IndexReaderUtils.documentRaw(reader, docId).length();
+        try {
+            String raw = reader.document(IndexReaderUtils.convertDocidToLuceneDocid(reader, docId), Set.of(IndexArgs.CONTENTS))
+                    .get(IndexArgs.CONTENTS);
 
-        documentLengthCache.put(docId, documentLength);
+            documentLength = raw.length();
 
-        return documentLength;
+            documentLengthCache.put(docId, documentLength);
+
+            return documentLength;
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
@@ -92,7 +99,7 @@ public class CachedIndex implements Index {
     }
 
     @Override
-    public int getCollectionSize() {
+    public int getNumDocuments() {
         return reader.numDocs();
     }
 

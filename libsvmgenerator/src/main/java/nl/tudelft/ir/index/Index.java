@@ -9,6 +9,6 @@ public interface Index {
 
     long getCollectionFrequency(String term);
     int getDocumentFrequency(String term);
-    int getCollectionSize();
+    int getNumDocuments();
     long getTotalTermCount();
 }

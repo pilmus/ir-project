@@ -3,10 +3,10 @@ package nl.tudelft.ir;
 import io.anserini.analysis.AnalyzerUtils;
 import io.anserini.index.IndexReaderUtils;
 import nl.tudelft.ir.feature.*;
-import nl.tudelft.ir.index.CachedIndex;
 import nl.tudelft.ir.index.Collection;
 import nl.tudelft.ir.index.Document;
 import nl.tudelft.ir.index.Index;
+import nl.tudelft.ir.index.LuceneIndex;
 import org.apache.lucene.index.IndexReader;
 
 import java.io.FileWriter;
@@ -32,7 +32,7 @@ public class LibSvmFileGenerator {
         Path top100Path = Paths.get(dataDirectory, "msmarco-doctrain-top100");
         Path qrelsPath = Paths.get(dataDirectory, "msmarco-doctrain-qrels.tsv");
 
-        Index index = new CachedIndex(indexReader);
+        Index index = new LuceneIndex(indexReader);
 
         List<Feature> features = Arrays.asList(
                 /* feature index */
@@ -90,10 +90,12 @@ public class LibSvmFileGenerator {
         Thread progressThread = new Thread(new ProgressIndicator(doneCounter, examples.size()));
         progressThread.start();
 
+        Collection collection = new Collection(index);
+
         List<LibSvmEntry> entries = examples.stream()
                 .parallel()
                 .map(example -> {
-                    LibSvmEntry entry = generateLibSvmEntry(example);
+                    LibSvmEntry entry = generateLibSvmEntry(example, collection);
                     doneCounter.incrementAndGet();
 
                     return entry;
@@ -206,27 +208,11 @@ public class LibSvmFileGenerator {
         }
     }
 
-    private double[] generateFeatureVector(Example example) {
+    private double[] generateFeatureVector(Example example, Collection collection) {
         List<String> queryTerms = AnalyzerUtils.analyze(example.query);
         double[] featureVec = new double[features.size()];
 
         Document document = retrieveDocument(example.docId);
-
-        Map<String, Long> collectionFrequencyCache = new HashMap<>();
-        for (String term : queryTerms) {
-            collectionFrequencyCache.put(term, index.getCollectionFrequency(term));
-        }
-
-        for (String term : document.getTerms()) {
-            collectionFrequencyCache.put(term, index.getCollectionFrequency(term));
-        }
-
-        Map<String, Integer> documentFrequenciesCache = new HashMap<>();
-        for (String term : queryTerms) {
-            documentFrequenciesCache.put(term, index.getDocumentFrequency(term));
-        }
-
-        Collection collection = new Collection(index.getNumDocuments(), index.getTotalTermCount(), collectionFrequencyCache, documentFrequenciesCache);
 
         for (int i = 0; i < features.size(); i++) {
             featureVec[i] = features.get(i).score(queryTerms, document, collection);
@@ -235,8 +221,8 @@ public class LibSvmFileGenerator {
         return featureVec;
     }
 
-    private LibSvmEntry generateLibSvmEntry(Example example) {
-        double[] features = generateFeatureVector(example);
+    private LibSvmEntry generateLibSvmEntry(Example example, Collection collection) {
+        double[] features = generateFeatureVector(example, collection);
 
         return new LibSvmEntry(example.isPositive, example.queryId, features);
     }

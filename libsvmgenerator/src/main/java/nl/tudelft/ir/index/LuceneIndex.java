@@ -7,17 +7,13 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 
 import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
+import java.util.Set;
 
-public class CachedIndex implements Index {
+public class LuceneIndex implements Index {
     private final IndexReader reader;
 
-    private final Map<String, Integer> documentLengthCache = new ConcurrentHashMap<>();
-    private final Map<String, Long> collectionFrequencyCache = Collections.synchronizedMap(new HashMap<>());
-    private final Map<String, Integer> documentFrequencyCache = Collections.synchronizedMap(new HashMap<>());
-
-    public CachedIndex(IndexReader reader) {
+    public LuceneIndex(IndexReader reader) {
         this.reader = reader;
     }
 
@@ -32,20 +28,11 @@ public class CachedIndex implements Index {
 
     @Override
     public long getDocumentLength(String docId) {
-        Integer documentLength = documentLengthCache.get(docId);
-        if (documentLength != null) {
-            return documentLength;
-        }
-
         try {
-            String raw = reader.document(IndexReaderUtils.convertDocidToLuceneDocid(reader, docId), Set.of(IndexArgs.CONTENTS))
-                    .get(IndexArgs.CONTENTS);
+            String raw = reader.document(IndexReaderUtils.convertDocidToLuceneDocid(reader, docId), Set.of(IndexArgs.RAW))
+                    .get(IndexArgs.RAW);
 
-            documentLength = raw.length();
-
-            documentLengthCache.put(docId, documentLength);
-
-            return documentLength;
+            return raw.length();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -62,40 +49,20 @@ public class CachedIndex implements Index {
 
     @Override
     public long getCollectionFrequency(String term) {
-        Long frequency = collectionFrequencyCache.get(term);
-
-        if (frequency != null) {
-            return frequency;
-        }
-
         try {
-            frequency = reader.totalTermFreq(new Term(IndexArgs.CONTENTS, term));
+            return reader.totalTermFreq(new Term(IndexArgs.CONTENTS, term));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-
-        collectionFrequencyCache.put(term, frequency);
-
-        return frequency;
     }
 
     @Override
     public int getDocumentFrequency(String term) {
-        Integer frequency = documentFrequencyCache.get(term);
-
-        if (frequency != null) {
-            return frequency;
-        }
-
         try {
-            frequency = reader.docFreq(new Term(IndexArgs.CONTENTS, term));
+            return reader.docFreq(new Term(IndexArgs.CONTENTS, term));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-
-        documentFrequencyCache.put(term, frequency);
-
-        return frequency;
     }
 
     @Override

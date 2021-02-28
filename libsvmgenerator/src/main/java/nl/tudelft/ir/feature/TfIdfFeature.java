@@ -20,7 +20,7 @@ public class TfIdfFeature extends AbstractFeature {
         for (int i = 0; i < queryTerms.size(); i++) {
             tfs[i] = docVector.getOrDefault(queryTerms.get(i), 0L);
 
-            double df = collection.getFrequency(queryTerms.get(i));
+            double df = collection.getDocumentFrequency(queryTerms.get(i));
             idfs[i] = Math.log((C - df + 0.5) / (df + 0.5));
         }
 

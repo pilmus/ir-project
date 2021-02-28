@@ -8,6 +8,7 @@ public interface Index {
     double getBm25Weight(String term, String docId, float k1, float b);
 
     long getCollectionFrequency(String term);
+    int getDocumentFrequency(String term);
     int getCollectionSize();
     long getTotalTermCount();
 }

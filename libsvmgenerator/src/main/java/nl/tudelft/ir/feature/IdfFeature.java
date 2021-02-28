@@ -14,7 +14,7 @@ public class IdfFeature extends AbstractFeature {
         double[] idfs = new double[queryTerms.size()];
 
         for (int i = 0; i < queryTerms.size(); i++) {
-            double df = collection.getFrequency(queryTerms.get(i));
+            double df = collection.getDocumentFrequency(queryTerms.get(i));
 
             idfs[i] = Math.log((C - df + 0.5) / (df + 0.5));
         }

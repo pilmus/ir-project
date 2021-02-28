@@ -35,14 +35,15 @@ public class LibSvmFileGenerator {
         Index index = new CachedIndex(indexReader);
 
         List<Feature> features = Arrays.asList(
-                new DocumentLengthFeature(),
-                new TfFeature(),
-                new IdfFeature(),
-                new TfIdfFeature(),
-                new Bm25Feature(index),
-                new LmirFeature(new LmirFeature.JelinekMercerSmoothing(0.7)),
-                new LmirFeature(new LmirFeature.DirichletPriorSmoothing(0.7)),
-                new LmirFeature(new LmirFeature.AbsoluteDiscountingSmoothing(0.7))
+                /* feature index */
+                /* 0             */ new DocumentLengthFeature(),
+                /* 1             */ new TfFeature(),
+                /* 2             */ new IdfFeature(),
+                /* 3             */ new TfIdfFeature(),
+                /* 4             */ new Bm25Feature(index),
+                /* 5             */ new LmirFeature(new LmirFeature.JelinekMercerSmoothing(0.7)),
+                /* 6             */ new LmirFeature(new LmirFeature.DirichletPriorSmoothing(0.7)),
+                /* 7             */ new LmirFeature(new LmirFeature.AbsoluteDiscountingSmoothing(0.7))
         );
 
         LibSvmFileGenerator generator = new LibSvmFileGenerator(index, queriesPath, top100Path, qrelsPath, features);
@@ -212,7 +213,6 @@ public class LibSvmFileGenerator {
         Document document = retrieveDocument(example.docId);
 
         Map<String, Long> collectionFrequencyCache = new HashMap<>();
-
         for (String term : queryTerms) {
             collectionFrequencyCache.put(term, index.getCollectionFrequency(term));
         }
@@ -221,7 +221,12 @@ public class LibSvmFileGenerator {
             collectionFrequencyCache.put(term, index.getCollectionFrequency(term));
         }
 
-        Collection collection = new Collection(index, collectionFrequencyCache);
+        Map<String, Integer> documentFrequenciesCache = new HashMap<>();
+        for (String term : queryTerms) {
+            documentFrequenciesCache.put(term, index.getDocumentFrequency(term));
+        }
+
+        Collection collection = new Collection(index, collectionFrequencyCache, documentFrequenciesCache);
 
         for (int i = 0; i < features.size(); i++) {
             featureVec[i] = features.get(i).score(queryTerms, document, collection);

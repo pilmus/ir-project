@@ -15,6 +15,7 @@ public class CachedIndex implements Index {
 
     private final Map<String, Long> documentLengthCache = new ConcurrentHashMap<>();
     private final Map<String, Long> collectionFrequencyCache = Collections.synchronizedMap(new HashMap<>());
+    private final Map<String, Integer> documentFrequencyCache = Collections.synchronizedMap(new HashMap<>());
 
     public CachedIndex(IndexReader reader) {
         this.reader = reader;
@@ -67,6 +68,25 @@ public class CachedIndex implements Index {
         }
 
         collectionFrequencyCache.put(term, frequency);
+
+        return frequency;
+    }
+
+    @Override
+    public int getDocumentFrequency(String term) {
+        Integer frequency = documentFrequencyCache.get(term);
+
+        if (frequency != null) {
+            return frequency;
+        }
+
+        try {
+            frequency = reader.docFreq(new Term(IndexArgs.CONTENTS, term));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        documentFrequencyCache.put(term, frequency);
 
         return frequency;
     }

@@ -1,28 +1,26 @@
 package nl.tudelft.ir.feature;
 
-import org.apache.lucene.index.IndexReader;
+import nl.tudelft.ir.index.Collection;
+import nl.tudelft.ir.index.Document;
+import nl.tudelft.ir.index.Index;
 
 import java.util.List;
 import java.util.Map;
 
 public class TfIdfFeature extends AbstractFeature {
-    public TfIdfFeature(IndexReader reader) {
-        super(reader);
-    }
-
     @Override
-    public double score(List<String> queryTerms, String docId) {
-        long C = this.numDocuments();
+    public double score(List<String> queryTerms, Document document, Collection collection) {
+        long C = collection.getSize();
 
         double[] idfs = new double[queryTerms.size()];
         double[] tfs = new double[queryTerms.size()];
 
-        Map<String, Long> docVector = getDocumentVector(docId);
+        Map<String, Long> docVector = document.getVector();
 
         for (int i = 0; i < queryTerms.size(); i++) {
             tfs[i] = docVector.getOrDefault(queryTerms.get(i), 0L);
 
-            double df = getCollectionFrequency(queryTerms.get(i));
+            double df = collection.getFrequency(queryTerms.get(i));
             idfs[i] = Math.log((C - df + 0.5) / (df + 0.5));
         }
 

@@ -1,35 +1,29 @@
 package nl.tudelft.ir.feature;
 
-import io.anserini.index.IndexReaderUtils;
-import org.apache.lucene.index.IndexReader;
+import nl.tudelft.ir.index.Collection;
+import nl.tudelft.ir.index.Document;
+import nl.tudelft.ir.index.Index;
 
-import java.io.IOException;
 import java.util.List;
 
 public class Bm25Feature extends AbstractFeature {
     private static final float k1 = 0.9f;
     private static final float b = 0.4f;
 
-    public Bm25Feature(IndexReader reader) {
-        super(reader);
+    private final Index index;
+
+    public Bm25Feature(Index index) {
+        this.index = index;
     }
 
     @Override
-    public double score(List<String> queryTerms, String docId) {
+    public double score(List<String> queryTerms, Document document, Collection collection) {
         double[] termScores = new double[queryTerms.size()];
 
         for (int i = 0; i < queryTerms.size(); i++) {
-            termScores[i] = getBm25(queryTerms.get(i), docId);
+            termScores[i] = index.getBm25Weight(queryTerms.get(i), document.getId(), k1, b);
         }
 
         return sum(termScores);
-    }
-
-    private double getBm25(String term, String docId) {
-        try {
-            return IndexReaderUtils.getBM25AnalyzedTermWeightWithParameters(getReader(), docId, term, k1, b);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
     }
 }

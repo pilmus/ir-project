@@ -3,6 +3,10 @@ package nl.tudelft.ir;
 import io.anserini.analysis.AnalyzerUtils;
 import io.anserini.index.IndexReaderUtils;
 import nl.tudelft.ir.feature.*;
+import nl.tudelft.ir.index.CachedIndex;
+import nl.tudelft.ir.index.Collection;
+import nl.tudelft.ir.index.Document;
+import nl.tudelft.ir.index.Index;
 import org.apache.lucene.index.IndexReader;
 
 import java.io.FileWriter;
@@ -28,27 +32,31 @@ public class LibSvmFileGenerator {
         Path top100Path = Paths.get(dataDirectory, "msmarco-doctrain-top100");
         Path qrelsPath = Paths.get(dataDirectory, "msmarco-doctrain-qrels.tsv");
 
+        Index index = new CachedIndex(indexReader);
+
         List<Feature> features = Arrays.asList(
-                new DocumentLengthFeature(indexReader),
-                new TfFeature(indexReader),
-                new IdfFeature(indexReader),
-                new TfIdfFeature(indexReader),
-                new Bm25Feature(indexReader),
-                new LmirFeature(indexReader, new LmirFeature.JelinekMercerSmoothing(0.7)),
-                new LmirFeature(indexReader, new LmirFeature.DirichletPriorSmoothing(0.7)),
-                new LmirFeature(indexReader, new LmirFeature.AbsoluteDiscountingSmoothing(0.7))
+                new DocumentLengthFeature(),
+                new TfFeature(),
+                new IdfFeature(),
+                new TfIdfFeature(),
+                new Bm25Feature(index),
+                new LmirFeature(new LmirFeature.JelinekMercerSmoothing(0.7)),
+                new LmirFeature(new LmirFeature.DirichletPriorSmoothing(0.7)),
+                new LmirFeature(new LmirFeature.AbsoluteDiscountingSmoothing(0.7))
         );
 
-        LibSvmFileGenerator generator = new LibSvmFileGenerator(queriesPath, top100Path, qrelsPath, features);
+        LibSvmFileGenerator generator = new LibSvmFileGenerator(index, queriesPath, top100Path, qrelsPath, features);
         generator.generate(outputPath);
     }
 
+    private final Index index;
     private final Path queriesPath;
     private final Path top100Path;
     private final Path qrelsPath;
     private final List<Feature> features;
 
-    public LibSvmFileGenerator(Path queriesPath, Path top100Path, Path qrelsPath, List<Feature> features) {
+    public LibSvmFileGenerator(Index index, Path queriesPath, Path top100Path, Path qrelsPath, List<Feature> features) {
+        this.index = index;
         this.queriesPath = queriesPath;
         this.top100Path = top100Path;
         this.qrelsPath = qrelsPath;
@@ -73,9 +81,9 @@ public class LibSvmFileGenerator {
         removePositiveExamplesFromTop100(qrels, top100);
 
         System.out.println("Generating positive and negative examples...");
-        List<Example> examples = generatePositiveNegativeExamples(queries, qrels, top100).collect(Collectors.toList());
+        List<Example> examples = generatePositiveNegativeExamples(queries, qrels, top100);
 
-        System.out.print("Generating feature vectors... ");
+        System.out.println("Generating feature vectors... ");
 
         AtomicInteger doneCounter = new AtomicInteger(0);
         Thread progressThread = new Thread(new ProgressIndicator(doneCounter, examples.size()));
@@ -159,7 +167,7 @@ public class LibSvmFileGenerator {
         }
     }
 
-    private Stream<Example> generatePositiveNegativeExamples(Map<String, String> queries, Map<String, String> qrels, Map<String, List<String>> top100) {
+    private List<Example> generatePositiveNegativeExamples(Map<String, String> queries, Map<String, String> qrels, Map<String, List<String>> top100) {
         return queries.entrySet().stream()
                 .map(entry -> {
                     String queryId = entry.getKey();
@@ -173,12 +181,20 @@ public class LibSvmFileGenerator {
                     }
 
                     String negativeDocId = allNegativeDocIds.get(ThreadLocalRandom.current().nextInt(allNegativeDocIds.size()));
+
                     return Arrays.asList(
                             Example.positive(queryId, query, positiveDocId),
                             Example.negative(queryId, query, negativeDocId)
                     );
                 })
-                .flatMap(List::stream);
+                .flatMap(List::stream)
+                .collect(Collectors.toList());
+    }
+
+    private Document retrieveDocument(String id) {
+        Map<String, Long> documentVector = index.getDocumentVector(id);
+
+        return new Document(id, documentVector, index.getDocumentLength(id));
     }
 
     private Stream<String[]> readCsv(Path path, String delimiter) {
@@ -193,8 +209,22 @@ public class LibSvmFileGenerator {
         List<String> queryTerms = AnalyzerUtils.analyze(example.query);
         double[] featureVec = new double[features.size()];
 
+        Document document = retrieveDocument(example.docId);
+
+        Map<String, Long> collectionFrequencyCache = new HashMap<>();
+
+        for (String term : queryTerms) {
+            collectionFrequencyCache.put(term, index.getCollectionFrequency(term));
+        }
+
+        for (String term : document.getTerms()) {
+            collectionFrequencyCache.put(term, index.getCollectionFrequency(term));
+        }
+
+        Collection collection = new Collection(index, collectionFrequencyCache);
+
         for (int i = 0; i < features.size(); i++) {
-            featureVec[i] = features.get(i).score(queryTerms, example.docId);
+            featureVec[i] = features.get(i).score(queryTerms, document, collection);
         }
 
         return featureVec;

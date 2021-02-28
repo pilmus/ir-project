@@ -25,6 +25,10 @@ public abstract class AbstractFeature implements Feature {
         }
     }
 
+    protected long getDocumentLength(String docId) {
+        return IndexReaderUtils.documentRaw(reader, docId).length();
+    }
+
     protected double sum(double[] vector) {
         float s = 0;
         for (double e : vector) {
@@ -47,6 +51,10 @@ public abstract class AbstractFeature implements Feature {
 
     protected int numDocuments() {
         return (int) IndexReaderUtils.getIndexStats(reader).get("documents");
+    }
+
+    protected long getTotalTermCount() {
+        return (long) IndexReaderUtils.getIndexStats(reader).get("total_terms");
     }
 
     protected long getCollectionFrequency(String term) {

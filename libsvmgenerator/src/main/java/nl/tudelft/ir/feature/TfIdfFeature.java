@@ -4,23 +4,18 @@ import nl.tudelft.ir.index.Collection;
 import nl.tudelft.ir.index.Document;
 
 import java.util.List;
-import java.util.Map;
 
 public class TfIdfFeature extends AbstractFeature {
     @Override
     public double score(List<String> queryTerms, Document document, Collection collection) {
-        long C = collection.getNumDocuments();
-
         double[] idfs = new double[queryTerms.size()];
         double[] tfs = new double[queryTerms.size()];
 
-        Map<String, Long> docVector = document.getVector();
-
         for (int i = 0; i < queryTerms.size(); i++) {
-            tfs[i] = docVector.getOrDefault(queryTerms.get(i), 0L);
+            String term = queryTerms.get(i);
 
-            double df = collection.getDocumentFrequency(queryTerms.get(i));
-            idfs[i] = Math.log((C - df + 0.5) / (df + 0.5));
+            tfs[i] = document.getFrequency(term);
+            idfs[i] = IdfFeature.idf(term, collection);
         }
 
         double[] tfidfs = multiply(tfs, idfs);

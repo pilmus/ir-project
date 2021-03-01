@@ -40,7 +40,7 @@ public class LibSvmFileGenerator {
                 /* 1             */ new TfFeature(),
                 /* 2             */ new IdfFeature(),
                 /* 3             */ new TfIdfFeature(),
-                /* 4             */ new Bm25Feature(index),
+                /* 4             */ new Bm25Feature(),
                 /* 5             */ new LmirFeature(new LmirFeature.JelinekMercerSmoothing(0.7)),
                 /* 6             */ new LmirFeature(new LmirFeature.DirichletPriorSmoothing(0.7)),
                 /* 7             */ new LmirFeature(new LmirFeature.AbsoluteDiscountingSmoothing(0.7))

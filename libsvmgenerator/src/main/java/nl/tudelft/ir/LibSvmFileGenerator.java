@@ -25,12 +25,15 @@ public class LibSvmFileGenerator {
     public static void main(String[] args) throws IOException {
         IndexReader indexReader = IndexReaderUtils.getReader(args[0]);
 
-        String dataDirectory = "/media/hd/ir-project/data";
+        String modus = "dev";
+        String size = "";
 
-        Path outputPath = Paths.get(dataDirectory, "libsvm_train.txt");
-        Path queriesPath = Paths.get(dataDirectory, "msmarco-doctrain-queries.tsv");
-        Path top100Path = Paths.get(dataDirectory, "msmarco-doctrain-top100");
-        Path qrelsPath = Paths.get(dataDirectory, "msmarco-doctrain-qrels.tsv");
+        String dataDirectory = "data";
+
+        Path outputPath = Paths.get(dataDirectory, String.format("libsvm_%s%s.txt", modus, size));
+        Path queriesPath = Paths.get(dataDirectory, String.format("msmarco-doc%s-queries%s.tsv", modus, size));
+        Path top100Path = Paths.get(dataDirectory, String.format("msmarco-doc%s-top100.tsv", modus));
+        Path qrelsPath = Paths.get(dataDirectory, String.format("msmarco-doc%s-qrels.tsv", modus));
 
         Index index = new LuceneIndex(indexReader);
 
@@ -40,9 +43,9 @@ public class LibSvmFileGenerator {
                 /* 1             */ new TfFeature(),
                 /* 2             */ new IdfFeature(),
                 /* 3             */ new TfIdfFeature(),
-                /* 4             */ new Bm25Feature(index),
-                /* 5             */ new LmirFeature(new LmirFeature.JelinekMercerSmoothing(0.7)),
-                /* 6             */ new LmirFeature(new LmirFeature.DirichletPriorSmoothing(0.7)),
+                /* 4             */ new Bm25Feature(index, 2.5f, 0.8f),
+                /* 5             */ new LmirFeature(new LmirFeature.JelinekMercerSmoothing(0.1)),
+                /* 6             */ new LmirFeature(new LmirFeature.DirichletPriorSmoothing(2000)),
                 /* 7             */ new LmirFeature(new LmirFeature.AbsoluteDiscountingSmoothing(0.7))
         );
 
@@ -224,7 +227,7 @@ public class LibSvmFileGenerator {
     private LibSvmEntry generateLibSvmEntry(Example example, Collection collection) {
         double[] features = generateFeatureVector(example, collection);
 
-        return new LibSvmEntry(example.isPositive, example.queryId, features);
+        return new LibSvmEntry(example.isPositive, example.queryId, features, example.docId);
     }
 
     private static class Example {
@@ -262,11 +265,13 @@ public class LibSvmFileGenerator {
         private final boolean isPositive;
         private final String queryId;
         private final double[] features;
+        private final String docId;
 
-        public LibSvmEntry(boolean isPositive, String queryId, double[] features) {
+        public LibSvmEntry(boolean isPositive, String queryId, double[] features, String docId) {
             this.isPositive = isPositive;
             this.queryId = queryId;
             this.features = features;
+            this.docId = docId;
         }
 
         public void write(StringBuilder builder) {
@@ -277,10 +282,14 @@ public class LibSvmFileGenerator {
 
             for (int i = 0; i < features.length; i++) {
                 builder.append(" ");
-                builder.append(i);
+                builder.append(i + 1);
                 builder.append(":");
                 builder.append(features[i]);
             }
+
+            builder.append(" # ");
+            builder.append(docId);
+
             builder.append("\n");
         }
     }

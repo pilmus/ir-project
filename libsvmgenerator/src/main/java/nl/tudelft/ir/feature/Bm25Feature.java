@@ -7,13 +7,15 @@ import nl.tudelft.ir.index.Index;
 import java.util.List;
 
 public class Bm25Feature extends AbstractFeature {
-    private static final float k1 = 0.9f;
-    private static final float b = 0.4f;
+    private final float k1;
+    private final float b;
 
     private final Index index;
 
-    public Bm25Feature(Index index) {
+    public Bm25Feature(Index index, float k1, float b) {
         this.index = index;
+        this.k1 = k1;
+        this.b = b;
     }
 
     @Override

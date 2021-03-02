@@ -3,3 +3,4 @@ data/
 bin/
 venv/
 __pycache__/
+/indexes/

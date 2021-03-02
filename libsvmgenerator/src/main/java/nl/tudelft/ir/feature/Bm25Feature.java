@@ -6,8 +6,8 @@ import nl.tudelft.ir.index.Document;
 import java.util.List;
 
 public class Bm25Feature extends AbstractFeature {
-    private static final float k1 = 0.9f;
-    private static final float b = 0.4f;
+    private static final float k1 = 2.5f;
+    private static final float b = 0.8f;
 
     @Override
     public double score(List<String> queryTerms, Document document, Collection collection) {

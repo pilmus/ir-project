@@ -41,8 +41,8 @@ public class LibSvmFileGenerator {
                 /* 2             */ new IdfFeature(),
                 /* 3             */ new TfIdfFeature(),
                 /* 4             */ new Bm25Feature(),
-                /* 5             */ new LmirFeature(new LmirFeature.JelinekMercerSmoothing(0.7)),
-                /* 6             */ new LmirFeature(new LmirFeature.DirichletPriorSmoothing(0.7)),
+                /* 5             */ new LmirFeature(new LmirFeature.JelinekMercerSmoothing(0.1)),
+                /* 6             */ new LmirFeature(new LmirFeature.DirichletPriorSmoothing(2000)),
                 /* 7             */ new LmirFeature(new LmirFeature.AbsoluteDiscountingSmoothing(0.7))
         );
 

@@ -1,6 +1,5 @@
 package nl.tudelft.ir.index;
 
-import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 
@@ -21,6 +20,10 @@ public class Document {
 
     public Map<String, Long> getVector() {
         return vector;
+    }
+
+    public long getFrequency(String term) {
+        return vector.getOrDefault(term, 0L);
     }
 
     public Set<String> getTerms() {

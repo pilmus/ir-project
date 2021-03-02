@@ -11,4 +11,6 @@ public interface Index {
     int getDocumentFrequency(String term);
     int getNumDocuments();
     long getTotalTermCount();
+
+    double getAverageDocumentLength();
 }

@@ -7,6 +7,7 @@ public class Collection {
     private final Index index;
     private final long numDocuments;
     private final long totalTermCount;
+    private final double averageDocumentLength;
 
     private final ConcurrentMap<String, Long> collectionFrequencies = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, Integer> documentFrequencies = new ConcurrentHashMap<>();
@@ -14,6 +15,7 @@ public class Collection {
     public Collection(Index index) {
         this.numDocuments = index.getNumDocuments();
         this.totalTermCount = index.getTotalTermCount();
+        this.averageDocumentLength = index.getAverageDocumentLength();
         this.index = index;
     }
 
@@ -31,5 +33,9 @@ public class Collection {
 
     public int getDocumentFrequency(String term) {
         return documentFrequencies.computeIfAbsent(term, index::getDocumentFrequency);
+    }
+
+    public double getAverageDocumentLength() {
+        return averageDocumentLength;
     }
 }

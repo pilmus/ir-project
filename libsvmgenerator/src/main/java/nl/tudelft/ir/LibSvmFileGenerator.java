@@ -25,8 +25,8 @@ public class LibSvmFileGenerator {
     public static void main(String[] args) throws IOException {
         IndexReader indexReader = IndexReaderUtils.getReader(args[0]);
 
-        String modus = "dev";
-        String size = "";
+        String modus = "train";
+        String size = "-small";
 
         String dataDirectory = "data";
 

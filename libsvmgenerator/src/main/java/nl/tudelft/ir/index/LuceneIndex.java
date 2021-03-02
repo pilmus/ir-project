@@ -78,4 +78,9 @@ public class LuceneIndex implements Index {
             throw new RuntimeException(e);
         }
     }
+
+    @Override
+    public double getAverageDocumentLength() {
+        return getTotalTermCount() / (double) getNumDocuments();
+    }
 }

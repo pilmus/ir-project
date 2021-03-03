@@ -6,7 +6,6 @@ import nl.tudelft.ir.index.Document;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import static java.lang.Math.max;
 
@@ -22,11 +21,8 @@ public class LmirFeature extends AbstractFeature {
         Map<String, Long> documentVector = document.getVector();
         long documentLength = document.getLength();
 
-        Set<String> documentTerms = document.getTerms();
-        Map<String, Double> lmirProbabilities = new HashMap<>();
-        for (String term : documentTerms) {
-            lmirProbabilities.put(term, 0d);
-        }
+        List<String> documentTerms = document.getTerms();
+        Map<String, Double> lmirProbabilities = new HashMap<>(documentTerms.size());
 
         long totalTermCount = collection.getTotalTermCount();
 

@@ -1,17 +1,20 @@
 package nl.tudelft.ir.index;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class Document {
     private final String id;
     private final Map<String, Long> vector;
     private final long length;
+    private final List<String> terms;
 
     public Document(String id, Map<String, Long> vector, long length) {
         this.id = id;
         this.vector = vector;
         this.length = length;
+        terms = new ArrayList<>(vector.keySet());
     }
 
     public String getId() {
@@ -26,8 +29,8 @@ public class Document {
         return vector.getOrDefault(term, 0L);
     }
 
-    public Set<String> getTerms() {
-        return vector.keySet();
+    public List<String> getTerms() {
+        return terms;
     }
 
     public long getLength() {

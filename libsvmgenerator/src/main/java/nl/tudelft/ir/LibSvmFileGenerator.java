@@ -25,8 +25,8 @@ public class LibSvmFileGenerator {
     public static void main(String[] args) throws IOException {
         IndexReader indexReader = IndexReaderUtils.getReader(args[0]);
 
-        String modus = "train";
-        String size = "-small";
+        String modus = "test";
+        String size = "";
 
         String dataDirectory = "data";
 
@@ -43,14 +43,18 @@ public class LibSvmFileGenerator {
                 /* 1             */ new TfFeature(),
                 /* 2             */ new IdfFeature(),
                 /* 3             */ new TfIdfFeature(),
-                /* 4             */ new Bm25Feature(index, 2.5f, 0.8f),
+                /* 4             */ new Bm25Feature(index, 1.2f, 0.75f),
                 /* 5             */ new LmirFeature(new LmirFeature.JelinekMercerSmoothing(0.1)),
                 /* 6             */ new LmirFeature(new LmirFeature.DirichletPriorSmoothing(2000)),
                 /* 7             */ new LmirFeature(new LmirFeature.AbsoluteDiscountingSmoothing(0.7))
         );
 
         LibSvmFileGenerator generator = new LibSvmFileGenerator(index, queriesPath, top100Path, qrelsPath, features);
-        generator.generate(outputPath);
+        if (modus.equals("test")) {
+            generator.generateFromTop100(outputPath);
+        } else {
+            generator.generatePositiveNegative(outputPath);
+        }
     }
 
     private final Index index;
@@ -67,7 +71,7 @@ public class LibSvmFileGenerator {
         this.features = features;
     }
 
-    public void generate(Path outputPath) {
+    public void generatePositiveNegative(Path outputPath) {
         long start = System.currentTimeMillis();
 
         System.out.println("Loading " + queriesPath + "...");
@@ -80,12 +84,65 @@ public class LibSvmFileGenerator {
         Map<String, List<String>> top100 = loadTop100(top100Path);
 
         System.out.println("Loading " + qrelsPath + "...");
-        Map<String, String> qrels = loadQrels(qrelsPath);
+        Map<String, QRel> qrels = loadQrels(qrelsPath);
 
         removePositiveExamplesFromTop100(qrels, top100);
 
         System.out.println("Generating positive and negative examples...");
         List<Example> examples = generatePositiveNegativeExamples(queries, qrels, top100);
+
+        System.out.println("Generating feature vectors... ");
+
+        AtomicInteger doneCounter = new AtomicInteger(0);
+        Thread progressThread = new Thread(new ProgressIndicator(doneCounter, examples.size()));
+        progressThread.start();
+
+        Collection collection = new Collection(index);
+
+        List<LibSvmEntry> entries = examples.stream()
+                .parallel()
+                .map(example -> {
+                    LibSvmEntry entry = generateLibSvmEntry(example, collection);
+                    doneCounter.incrementAndGet();
+
+                    return entry;
+                })
+                .collect(Collectors.toList());
+
+        try {
+            progressThread.join();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        System.out.println("Writing result to file...");
+        StringBuilder output = new StringBuilder();
+        entries.forEach(entry -> entry.write(output));
+
+        try (FileWriter outputFile = new FileWriter(outputPath.toFile())) {
+            outputFile.write(output.toString());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        long duration = System.currentTimeMillis() - start;
+        System.out.println("Done in " + String.format("%.1f", (float) duration / 1000) + "s");
+    }
+
+    public void generateFromTop100(Path outputPath) {
+        long start = System.currentTimeMillis();
+
+        System.out.println("Loading " + queriesPath + "...");
+        Map<String, String> queries = loadQueries(queriesPath);
+
+        // This query does not seem to have a top100 entry
+        queries.remove("502557");
+
+        System.out.println("Loading " + top100Path + "...");
+        Map<String, List<String>> top100 = loadTop100(top100Path);
+
+        System.out.println("Generating top100 examples...");
+        List<Example> examples = generateTop100Examples(queries, top100);
 
         System.out.println("Generating feature vectors... ");
 
@@ -153,33 +210,34 @@ public class LibSvmFileGenerator {
         return top100;
     }
 
-    private Map<String, String> loadQrels(Path path) {
-        Map<String, String> qrels = new HashMap<>();
+    private Map<String, QRel> loadQrels(Path path) {
+        Map<String, QRel> qrels = new HashMap<>();
 
         readCsv(path, " ").forEach(row -> {
             String qid = row[0];
             String docId = row[2];
+            String label = row[3];
 
-            qrels.put(qid, docId);
+            qrels.put(qid, new QRel(qid, docId, label));
         });
 
         return qrels;
     }
 
-    private void removePositiveExamplesFromTop100(Map<String, String> qrels, Map<String, List<String>> top100) {
+    private void removePositiveExamplesFromTop100(Map<String, QRel> qrels, Map<String, List<String>> top100) {
         for (String queryId : top100.keySet()) {
-            String positiveDocId = qrels.get(queryId);
+            String positiveDocId = qrels.get(queryId).docId;
             top100.get(queryId).remove(positiveDocId);
         }
     }
 
-    private List<Example> generatePositiveNegativeExamples(Map<String, String> queries, Map<String, String> qrels, Map<String, List<String>> top100) {
+    private List<Example> generatePositiveNegativeExamples(Map<String, String> queries, Map<String, QRel> qrels, Map<String, List<String>> top100) {
         return queries.entrySet().stream()
                 .map(entry -> {
                     String queryId = entry.getKey();
                     String query = entry.getValue();
 
-                    String positiveDocId = qrels.get(queryId);
+                    String positiveDocId = qrels.get(queryId).docId;
 
                     List<String> allNegativeDocIds = top100.get(queryId);
                     if (allNegativeDocIds == null) {
@@ -194,6 +252,37 @@ public class LibSvmFileGenerator {
                     );
                 })
                 .flatMap(List::stream)
+                .collect(Collectors.toList());
+    }
+
+    private List<Example> generateQRelExamples(Map<String, String> queries, Map<String, QRel> qrels) {
+        return qrels.entrySet().stream()
+                .map(entry -> {
+                    String queryId = entry.getKey();
+                    QRel qrel = entry.getValue();
+
+                    String docId = qrel.docId;
+                    String label = qrel.label;
+
+                    String query = queries.get(queryId);
+
+                    return new Example(queryId, query, docId, label);
+                })
+                .collect(Collectors.toList());
+
+    }
+
+    private List<Example> generateTop100Examples(Map<String, String> queries, Map<String, List<String>> top100) {
+        return top100.entrySet().stream()
+                .flatMap(entry -> {
+                    String queryId = entry.getKey();
+                    String query = queries.get(queryId);
+
+                    List<String> docIds = entry.getValue();
+
+                    return docIds.stream()
+                            .map(docId -> new Example(queryId, query, docId, "0"));
+                })
                 .collect(Collectors.toList());
     }
 
@@ -227,55 +316,68 @@ public class LibSvmFileGenerator {
     private LibSvmEntry generateLibSvmEntry(Example example, Collection collection) {
         double[] features = generateFeatureVector(example, collection);
 
-        return new LibSvmEntry(example.isPositive, example.queryId, features, example.docId);
+        return new LibSvmEntry(example.label, example.queryId, features, example.docId);
+    }
+
+    private static class QRel {
+        String qid;
+        String docId;
+        String label;
+
+        private QRel(String qid, String docId, String label) {
+            this.qid = qid;
+            this.docId = docId;
+            this.label = label;
+        }
     }
 
     private static class Example {
         String queryId;
         String query;
         String docId;
-        boolean isPositive;
+        String label;
 
-        private Example(String queryId, String query, String docId, boolean isPositive) {
+        private Example(String queryId, String query, String docId, String label) {
             this.queryId = queryId;
             this.query = query;
             this.docId = docId;
-            this.isPositive = isPositive;
+            this.label = label;
         }
 
         public static Example positive(String queryId, String query, String docId) {
-            return new Example(queryId, query, docId, true);
+            return new Example(queryId, query, docId, "1");
         }
 
         public static Example negative(String queryId, String query, String docId) {
-            return new Example(queryId, query, docId, false);
+            return new Example(queryId, query, docId, "0");
         }
 
         @Override
         public String toString() {
-            return (isPositive ? "PositiveExample" : "NegativeExample") + "{" +
+            return ("Example" + "{" +
                     "queryId='" + queryId + '\'' +
                     ", query='" + query + '\'' +
                     ", docId='" + docId + '\'' +
-                    '}';
+                    "label='" + label + '\'' +
+                    '}');
         }
     }
 
     private static class LibSvmEntry {
-        private final boolean isPositive;
+        private final String label;
         private final String queryId;
         private final double[] features;
         private final String docId;
 
-        public LibSvmEntry(boolean isPositive, String queryId, double[] features, String docId) {
-            this.isPositive = isPositive;
+        public LibSvmEntry(String label, String queryId, double[] features, String docId) {
+            this.label = label;
             this.queryId = queryId;
             this.features = features;
             this.docId = docId;
         }
 
         public void write(StringBuilder builder) {
-            builder.append(isPositive ? "1" : "0");
+            builder.append(label);
             builder.append(" ");
             builder.append("qid:");
             builder.append(queryId);

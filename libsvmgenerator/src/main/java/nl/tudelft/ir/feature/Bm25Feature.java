@@ -28,7 +28,7 @@ public class Bm25Feature extends AbstractFeature {
             String term = queryTerms.get(i);
             double idf = idf(term, collection);
             long termFrequency = document.getFrequency(term);
-            termScores[i] = idf * ((termFrequency * (k1 + 1)) / (termFrequency + (k1 * (1 - b + b * (document.getLength() / averageDocumentLength)))));
+            termScores[i] = idf * (termFrequency / (termFrequency + (k1 * (1 - b + b * (document.getLength() / averageDocumentLength)))));
         }
 
         return sum(termScores);

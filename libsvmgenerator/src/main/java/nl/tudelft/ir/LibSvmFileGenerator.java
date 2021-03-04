@@ -39,14 +39,14 @@ public class LibSvmFileGenerator {
 
         List<Feature> features = Arrays.asList(
                 /* feature index */
-                /* 0             */ new DocumentLengthFeature(),
-                /* 1             */ new TfFeature(),
-                /* 2             */ new IdfFeature(),
-                /* 3             */ new TfIdfFeature(),
-                /* 4             */ new Bm25Feature(index, 1.2f, 0.75f),
-                /* 5             */ new LmirFeature(new LmirFeature.JelinekMercerSmoothing(0.1)),
-                /* 6             */ new LmirFeature(new LmirFeature.DirichletPriorSmoothing(2000)),
-                /* 7             */ new LmirFeature(new LmirFeature.AbsoluteDiscountingSmoothing(0.7))
+                /* 1             */ new DocumentLengthFeature(),
+                /* 2             */ new TfFeature(),
+                /* 3             */ new IdfFeature(),
+                /* 4             */ new TfIdfFeature(),
+                /* 5             */ new Bm25Feature(1.2f, 0.75f),
+                /* 6             */ new LmirFeature(new LmirFeature.JelinekMercerSmoothing(0.1)),
+                /* 7             */ new LmirFeature(new LmirFeature.DirichletPriorSmoothing(2000)),
+                /* 8             */ new LmirFeature(new LmirFeature.AbsoluteDiscountingSmoothing(0.7))
         );
 
         LibSvmFileGenerator generator = new LibSvmFileGenerator(index, queriesPath, top100Path, qrelsPath, features);

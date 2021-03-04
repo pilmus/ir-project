@@ -10,10 +10,7 @@ public class Bm25Feature extends AbstractFeature {
     private final float k1;
     private final float b;
 
-    private final Index index;
-
-    public Bm25Feature(Index index, float k1, float b) {
-        this.index = index;
+    public Bm25Feature(float k1, float b) {
         this.k1 = k1;
         this.b = b;
     }

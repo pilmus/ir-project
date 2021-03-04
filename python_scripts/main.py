@@ -17,7 +17,7 @@ import pandas as pd
 
 
 def iter_msmarco_docs() -> Iterable[Dict]:
-    with open('data/msmarco-docs.tsv') as csvfile:
+    with open('../data/msmarco-docs.tsv') as csvfile:
         csv.field_size_limit(sys.maxsize)
         reader = csv.reader(csvfile, delimiter='\t', quoting=csv.QUOTE_NONE)
 
@@ -68,7 +68,7 @@ def index_msmarco(schema: Schema, dirname: str, num_files: int):
     ix = create_in(dirname, schema)
     writer = ix.writer()
 
-    with open('data/msmarco-docs.tsv') as csvfile:
+    with open('../data/msmarco-docs.tsv') as csvfile:
         csv.field_size_limit(sys.maxsize)
         reader = csv.reader(csvfile, delimiter='\t', quoting=csv.QUOTE_NONE)
 

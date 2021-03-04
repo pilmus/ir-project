@@ -4,3 +4,5 @@ bin/
 venv/
 __pycache__/
 /indexes/
+/python_scripts/python_scripts.iml
+/python_scripts/.ipynb_checkpoints/

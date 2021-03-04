@@ -13,13 +13,13 @@ public class IdfFeature extends AbstractFeature {
     }
 
     @Override
-    public double score(List<String> queryTerms, Document document, Collection collection) {
+    public float score(List<String> queryTerms, Document document, Collection collection) {
         double[] idfs = new double[queryTerms.size()];
 
         for (int i = 0; i < queryTerms.size(); i++) {
             idfs[i] = idf(queryTerms.get(i), collection);
         }
 
-        return sum(idfs);
+        return (float) sum(idfs);
     }
 }

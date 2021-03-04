@@ -83,4 +83,11 @@ public class LuceneIndex implements Index {
     public double getAverageDocumentLength() {
         return getTotalTermCount() / (double) getNumDocuments();
     }
+
+    @Override
+    public Document retrieveById(String docId) {
+        Map<String, Long> documentVector = getDocumentVector(docId);
+
+        return new Document(docId, documentVector, getDocumentLength(docId));
+    }
 }

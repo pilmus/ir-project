@@ -7,7 +7,7 @@ import java.util.List;
 
 public class DocumentLengthFeature implements Feature {
     @Override
-    public double score(List<String> queryTerms, Document document, Collection collection) {
+    public float score(List<String> queryTerms, Document document, Collection collection) {
         return document.getLength();
     }
 }

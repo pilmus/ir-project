@@ -17,7 +17,7 @@ public class LmirFeature extends AbstractFeature {
     }
 
     @Override
-    public double score(List<String> queryTerms, Document document, Collection collection) {
+    public float score(List<String> queryTerms, Document document, Collection collection) {
         Map<String, Long> documentVector = document.getVector();
         long documentLength = document.getLength();
 
@@ -50,7 +50,7 @@ public class LmirFeature extends AbstractFeature {
             }
         }
 
-        return score;
+        return (float) score;
     }
 
     interface SmoothingMethod {

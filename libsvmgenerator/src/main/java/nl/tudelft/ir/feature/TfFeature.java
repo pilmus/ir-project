@@ -7,13 +7,13 @@ import java.util.List;
 
 public class TfFeature extends AbstractFeature {
     @Override
-    public double score(List<String> queryTerms, Document document, Collection collection) {
+    public float score(List<String> queryTerms, Document document, Collection collection) {
         double[] tfs = new double[queryTerms.size()];
 
         for (int i = 0; i < queryTerms.size(); i++) {
             tfs[i] = document.getFrequency(queryTerms.get(i));
         }
 
-        return sum(tfs);
+        return (float) sum(tfs);
     }
 }

@@ -2,7 +2,8 @@ package nl.tudelft.ir;
 
 import io.anserini.analysis.AnalyzerUtils;
 import io.anserini.index.IndexReaderUtils;
-import nl.tudelft.ir.feature.*;
+import nl.tudelft.ir.feature.Feature;
+import nl.tudelft.ir.feature.Features;
 import nl.tudelft.ir.index.Collection;
 import nl.tudelft.ir.index.Document;
 import nl.tudelft.ir.index.Index;
@@ -37,17 +38,7 @@ public class LibSvmFileGenerator {
 
         Index index = new LuceneIndex(indexReader);
 
-        List<Feature> features = Arrays.asList(
-                /* feature index */
-                /* 1             */ new DocumentLengthFeature(),
-                /* 2             */ new TfFeature(),
-                /* 3             */ new IdfFeature(),
-                /* 4             */ new TfIdfFeature(),
-                /* 5             */ new Bm25Feature(1.2f, 0.75f),
-                /* 6             */ new LmirFeature(new LmirFeature.JelinekMercerSmoothing(0.1)),
-                /* 7             */ new LmirFeature(new LmirFeature.DirichletPriorSmoothing(2000)),
-                /* 8             */ new LmirFeature(new LmirFeature.AbsoluteDiscountingSmoothing(0.7))
-        );
+        List<Feature> features = Features.LAMBDAMART_DEFAULT_FEATURES;
 
         LibSvmFileGenerator generator = new LibSvmFileGenerator(index, queriesPath, top100Path, qrelsPath, features);
         if (modus.equals("test")) {
@@ -255,23 +246,6 @@ public class LibSvmFileGenerator {
                 .collect(Collectors.toList());
     }
 
-    private List<Example> generateQRelExamples(Map<String, String> queries, Map<String, QRel> qrels) {
-        return qrels.entrySet().stream()
-                .map(entry -> {
-                    String queryId = entry.getKey();
-                    QRel qrel = entry.getValue();
-
-                    String docId = qrel.docId;
-                    String label = qrel.label;
-
-                    String query = queries.get(queryId);
-
-                    return new Example(queryId, query, docId, label);
-                })
-                .collect(Collectors.toList());
-
-    }
-
     private List<Example> generateTop100Examples(Map<String, String> queries, Map<String, List<String>> top100) {
         return top100.entrySet().stream()
                 .flatMap(entry -> {
@@ -300,23 +274,13 @@ public class LibSvmFileGenerator {
         }
     }
 
-    private double[] generateFeatureVector(Example example, Collection collection) {
+    private LibSvmEntry generateLibSvmEntry(Example example, Collection collection) {
         List<String> queryTerms = AnalyzerUtils.analyze(example.query);
-        double[] featureVec = new double[features.size()];
-
         Document document = retrieveDocument(example.docId);
 
-        for (int i = 0; i < features.size(); i++) {
-            featureVec[i] = features.get(i).score(queryTerms, document, collection);
-        }
+        float[] featuresVec = Features.generateVector(features, queryTerms, document, collection);
 
-        return featureVec;
-    }
-
-    private LibSvmEntry generateLibSvmEntry(Example example, Collection collection) {
-        double[] features = generateFeatureVector(example, collection);
-
-        return new LibSvmEntry(example.label, example.queryId, features, example.docId);
+        return new LibSvmEntry(example.label, example.queryId, featuresVec, example.docId);
     }
 
     private static class QRel {
@@ -366,10 +330,10 @@ public class LibSvmFileGenerator {
     private static class LibSvmEntry {
         private final String label;
         private final String queryId;
-        private final double[] features;
+        private final float[] features;
         private final String docId;
 
-        public LibSvmEntry(String label, String queryId, double[] features, String docId) {
+        public LibSvmEntry(String label, String queryId, float[] features, String docId) {
             this.label = label;
             this.queryId = queryId;
             this.features = features;

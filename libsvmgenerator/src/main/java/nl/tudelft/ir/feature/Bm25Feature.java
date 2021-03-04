@@ -2,7 +2,6 @@ package nl.tudelft.ir.feature;
 
 import nl.tudelft.ir.index.Collection;
 import nl.tudelft.ir.index.Document;
-import nl.tudelft.ir.index.Index;
 
 import java.util.List;
 
@@ -16,7 +15,7 @@ public class Bm25Feature extends AbstractFeature {
     }
 
     @Override
-    public double score(List<String> queryTerms, Document document, Collection collection) {
+    public float score(List<String> queryTerms, Document document, Collection collection) {
         double averageDocumentLength = collection.getAverageDocumentLength();
 
         double[] termScores = new double[queryTerms.size()];
@@ -28,7 +27,7 @@ public class Bm25Feature extends AbstractFeature {
             termScores[i] = idf * (termFrequency / (termFrequency + (k1 * (1 - b + b * (document.getLength() / averageDocumentLength)))));
         }
 
-        return sum(termScores);
+        return (float) sum(termScores);
     }
 
     private double idf(String term, Collection collection) {

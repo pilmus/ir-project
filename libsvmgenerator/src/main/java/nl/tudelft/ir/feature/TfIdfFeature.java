@@ -7,7 +7,7 @@ import java.util.List;
 
 public class TfIdfFeature extends AbstractFeature {
     @Override
-    public double score(List<String> queryTerms, Document document, Collection collection) {
+    public float score(List<String> queryTerms, Document document, Collection collection) {
         double[] idfs = new double[queryTerms.size()];
         double[] tfs = new double[queryTerms.size()];
 
@@ -20,6 +20,6 @@ public class TfIdfFeature extends AbstractFeature {
 
         double[] tfidfs = multiply(tfs, idfs);
 
-        return sum(tfidfs);
+        return (float) sum(tfidfs);
     }
 }

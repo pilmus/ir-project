@@ -9,8 +9,8 @@ import io.anserini.rerank.RerankerContext;
 import io.anserini.rerank.ScoredDocuments;
 import nl.tudelft.ir.feature.Feature;
 import nl.tudelft.ir.feature.Features;
-import nl.tudelft.ir.index.Collection;
 import nl.tudelft.ir.index.Document;
+import nl.tudelft.ir.index.DocumentCollection;
 import nl.tudelft.ir.index.Index;
 import nl.tudelft.ir.index.LuceneIndex;
 import org.apache.lucene.index.IndexReader;
@@ -18,7 +18,8 @@ import org.apache.lucene.index.IndexReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class LambdaMARTReranker implements Reranker<Integer> {
 
@@ -31,7 +32,7 @@ public class LambdaMARTReranker implements Reranker<Integer> {
         // Read model
         String fullText;
         try {
-            fullText = Files.readString(Paths.get("/media/hd/ir-project/ltr_models/nonorm.txt"));
+            fullText = Files.readString(Paths.get("/media/hd/ir-project/models/lambdamart"));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -47,25 +48,47 @@ public class LambdaMARTReranker implements Reranker<Integer> {
     public ScoredDocuments rerank(ScoredDocuments docs, RerankerContext<Integer> context) {
         IndexReader reader = context.getIndexSearcher().getIndexReader();
         Index index = new LuceneIndex(reader);
-        Collection collection = new Collection(index);
+        DocumentCollection documentCollection = new DocumentCollection(index);
 
         List<String> queryTerms = context.getQueryTokens();
+
+        Map<Integer, Float> documentIndexToScore = new HashMap<>();
 
         for (int i = 0; i < docs.documents.length; i++) {
             int luceneDocId = docs.ids[i];
             String docId = IndexReaderUtils.convertLuceneDocidToDocid(reader, luceneDocId);
             Document document = index.retrieveById(docId);
 
-            DataPoint dataPoint = createDataPoint(queryTerms, document, collection);
+            DataPoint dataPoint = createDataPoint(queryTerms, document, documentCollection);
 
-            docs.scores[i] = ensemble.eval(dataPoint);
+            float score = ensemble.eval(dataPoint);
+            documentIndexToScore.put(i, score);
         }
 
-        return docs;
+        List<Integer> documentIndicesToKeep = documentIndexToScore.entrySet().stream()
+                .sorted(Collections.reverseOrder(Comparator.comparingDouble(Map.Entry::getValue)))
+                .map(Map.Entry::getKey)
+                .limit(100)
+                .collect(Collectors.toList());
+
+        ScoredDocuments rescored = new ScoredDocuments();
+        rescored.scores = new float[documentIndicesToKeep.size()];
+        rescored.ids = new int[documentIndicesToKeep.size()];
+        rescored.documents = new org.apache.lucene.document.Document[documentIndicesToKeep.size()];
+
+        int i = 0;
+        for (int indexToKeep : documentIndicesToKeep) {
+            rescored.scores[i] = documentIndexToScore.get(indexToKeep);
+            rescored.ids[i] = docs.ids[indexToKeep];
+            rescored.documents[i] = docs.documents[indexToKeep];
+            i++;
+        }
+
+        return rescored;
     }
 
-    private DataPoint createDataPoint(List<String> queryTerms, Document document, Collection collection) {
-        float[] featureVec = Features.generateVector(features, queryTerms, document, collection);
+    private DataPoint createDataPoint(List<String> queryTerms, Document document, DocumentCollection documentCollection) {
+        float[] featureVec = Features.generateVector(features, queryTerms, document, documentCollection);
 
         DataPoint dp = new FeatureVectorDataPoint(featureVec);
         dp.setFeatureVector(featureVec);

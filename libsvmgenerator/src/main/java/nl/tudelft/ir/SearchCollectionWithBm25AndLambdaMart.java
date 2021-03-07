@@ -193,7 +193,7 @@ public final class SearchCollectionWithBm25AndLambdaMart implements Closeable {
         QueryGenerator generator = new BagOfWordsQueryGenerator();
         Query query = generator.buildQuery(IndexArgs.CONTENTS, analyzer, queryString);
 
-        TopDocs rs = searcher.search(query, 100);
+        TopDocs rs = searcher.search(query, 1000);
 
         List<String> queryTokens = AnalyzerUtils.analyze(analyzer, queryString);
 

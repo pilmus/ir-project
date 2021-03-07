@@ -4,8 +4,8 @@ import io.anserini.analysis.AnalyzerUtils;
 import io.anserini.index.IndexReaderUtils;
 import nl.tudelft.ir.feature.Feature;
 import nl.tudelft.ir.feature.Features;
-import nl.tudelft.ir.index.Collection;
 import nl.tudelft.ir.index.Document;
+import nl.tudelft.ir.index.DocumentCollection;
 import nl.tudelft.ir.index.Index;
 import nl.tudelft.ir.index.LuceneIndex;
 import org.apache.lucene.index.IndexReader;
@@ -26,7 +26,7 @@ public class LibSvmFileGenerator {
     public static void main(String[] args) throws IOException {
         IndexReader indexReader = IndexReaderUtils.getReader(args[0]);
 
-        String modus = "test";
+        String modus = "dev";
         String size = "";
 
         String dataDirectory = "data";
@@ -88,12 +88,12 @@ public class LibSvmFileGenerator {
         Thread progressThread = new Thread(new ProgressIndicator(doneCounter, examples.size()));
         progressThread.start();
 
-        Collection collection = new Collection(index);
+        DocumentCollection documentCollection = new DocumentCollection(index);
 
         List<LibSvmEntry> entries = examples.stream()
                 .parallel()
                 .map(example -> {
-                    LibSvmEntry entry = generateLibSvmEntry(example, collection);
+                    LibSvmEntry entry = generateLibSvmEntry(example, documentCollection);
                     doneCounter.incrementAndGet();
 
                     return entry;
@@ -141,12 +141,12 @@ public class LibSvmFileGenerator {
         Thread progressThread = new Thread(new ProgressIndicator(doneCounter, examples.size()));
         progressThread.start();
 
-        Collection collection = new Collection(index);
+        DocumentCollection documentCollection = new DocumentCollection(index);
 
         List<LibSvmEntry> entries = examples.stream()
                 .parallel()
                 .map(example -> {
-                    LibSvmEntry entry = generateLibSvmEntry(example, collection);
+                    LibSvmEntry entry = generateLibSvmEntry(example, documentCollection);
                     doneCounter.incrementAndGet();
 
                     return entry;
@@ -260,12 +260,6 @@ public class LibSvmFileGenerator {
                 .collect(Collectors.toList());
     }
 
-    private Document retrieveDocument(String id) {
-        Map<String, Long> documentVector = index.getDocumentVector(id);
-
-        return new Document(id, documentVector, index.getDocumentLength(id));
-    }
-
     private Stream<String[]> readCsv(Path path, String delimiter) {
         try {
             return Files.lines(path).map(line -> line.split(delimiter));
@@ -274,11 +268,11 @@ public class LibSvmFileGenerator {
         }
     }
 
-    private LibSvmEntry generateLibSvmEntry(Example example, Collection collection) {
+    private LibSvmEntry generateLibSvmEntry(Example example, DocumentCollection documentCollection) {
         List<String> queryTerms = AnalyzerUtils.analyze(example.query);
-        Document document = retrieveDocument(example.docId);
+        Document document = documentCollection.find(example.docId);
 
-        float[] featuresVec = Features.generateVector(features, queryTerms, document, collection);
+        float[] featuresVec = Features.generateVector(features, queryTerms, document, documentCollection);
 
         return new LibSvmEntry(example.label, example.queryId, featuresVec, example.docId);
     }

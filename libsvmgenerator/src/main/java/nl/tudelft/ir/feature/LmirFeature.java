@@ -1,36 +1,41 @@
 package nl.tudelft.ir.feature;
 
-import nl.tudelft.ir.index.Collection;
 import nl.tudelft.ir.index.Document;
+import nl.tudelft.ir.index.DocumentCollection;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 import static java.lang.Math.max;
 
 public class LmirFeature extends AbstractFeature {
+    private final Function<Document, Document.Field> mapper;
     private final SmoothingMethod smoothingMethod;
 
-    public LmirFeature(SmoothingMethod smoothingMethod) {
+    public LmirFeature(Function<Document, Document.Field> mapper, SmoothingMethod smoothingMethod) {
+        this.mapper = mapper;
         this.smoothingMethod = smoothingMethod;
     }
 
     @Override
-    public float score(List<String> queryTerms, Document document, Collection collection) {
-        Map<String, Long> documentVector = document.getVector();
-        long documentLength = document.getLength();
+    public float score(List<String> queryTerms, Document document, DocumentCollection documentCollection) {
+        Document.Field field = mapper.apply(document);
 
-        List<String> documentTerms = document.getTerms();
+        Map<String, Long> documentVector = field.getVector();
+        long documentLength = field.getLength();
+
+        List<String> documentTerms = field.getTerms();
         Map<String, Double> lmirProbabilities = new HashMap<>(documentTerms.size());
 
-        long totalTermCount = collection.getTotalTermCount();
+        long totalTermCount = documentCollection.getTotalTermCount();
 
         double summedCorpusProbabilities = 0;
         double summedLmirProbabilities = 0;
 
         for (String term : documentTerms) {
-            double corpusProbabilityForTerm = collection.getCollectionFrequency(term) / (double) totalTermCount;
+            double corpusProbabilityForTerm = documentCollection.getCollectionFrequency(term) / (double) totalTermCount;
             double lmirProbabilityForTerm = smoothingMethod.smooth(term, documentVector, corpusProbabilityForTerm, documentLength);
 
             lmirProbabilities.put(term, lmirProbabilityForTerm);
@@ -46,7 +51,7 @@ public class LmirFeature extends AbstractFeature {
             if (lmirProbabilities.containsKey(term)) {
                 score *= lmirProbabilities.get(term);
             } else {
-                score *= alpha * collection.getCollectionFrequency(term) / totalTermCount;
+                score *= alpha * documentCollection.getCollectionFrequency(term) / totalTermCount;
             }
         }
 

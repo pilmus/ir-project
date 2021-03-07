@@ -3,7 +3,7 @@ package nl.tudelft.ir.index;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-public class Collection {
+public class DocumentCollection {
     private final Index index;
     private final long numDocuments;
     private final long totalTermCount;
@@ -12,7 +12,7 @@ public class Collection {
     private final ConcurrentMap<String, Long> collectionFrequencies = new ConcurrentHashMap<>();
     private final ConcurrentMap<String, Integer> documentFrequencies = new ConcurrentHashMap<>();
 
-    public Collection(Index index) {
+    public DocumentCollection(Index index) {
         this.numDocuments = index.getNumDocuments();
         this.totalTermCount = index.getTotalTermCount();
         this.averageDocumentLength = index.getAverageDocumentLength();
@@ -37,5 +37,9 @@ public class Collection {
 
     public double getAverageDocumentLength() {
         return averageDocumentLength;
+    }
+
+    public Document find(String docId) {
+        return index.retrieveById(docId);
     }
 }

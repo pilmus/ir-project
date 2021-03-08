@@ -39,7 +39,7 @@ public class RunGenerator {
         String dataDirectory = "data";
         String runDirectory = "runs";
 
-        Path outputPath = Paths.get(runDirectory, "bm25_lambdamart_rerank_top100.txt");
+        Path outputPath = Paths.get(runDirectory, "bm25_lambdamart_rerank_ndcg.txt");
         Path queriesPath = Paths.get(dataDirectory, "msmarco-doctest-queries.tsv");
 
         Index index = new LuceneIndex(indexReader);

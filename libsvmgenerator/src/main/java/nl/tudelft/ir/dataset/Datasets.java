@@ -11,7 +11,6 @@ abstract public class Datasets {
     private Datasets() {
     }
 
-
     public static Map<String, List<String>> loadTop100(Path path) {
         Map<String, List<String>> top100 = new HashMap<>();
 
@@ -38,6 +37,20 @@ abstract public class Datasets {
         });
 
         return queries;
+    }
+
+    public static Map<String, QRel> loadQrels(Path path) {
+        Map<String, QRel> qrels = new HashMap<>();
+
+        readCsv(path, " ").forEach(row -> {
+            String qid = row[0];
+            String docId = row[2];
+            String label = row[3];
+
+            qrels.put(qid, new QRel(qid, docId, label));
+        });
+
+        return qrels;
     }
 
     private static Stream<String[]> readCsv(Path path, String delimiter) {

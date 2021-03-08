@@ -40,7 +40,7 @@ public class LambdaMARTReranker implements Reranker<Integer> {
         // Read model
         String fullText;
         try {
-            fullText = Files.readString(Paths.get("/media/hd/ir-project/models/lambdamart"));
+            fullText = Files.readString(Paths.get("/media/hd/ir-project/models/temp.txt"));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

@@ -15,7 +15,6 @@ import io.anserini.search.query.BagOfWordsQueryGenerator;
 import io.anserini.search.query.QueryGenerator;
 import io.anserini.search.similarity.TaggedSimilarity;
 import io.anserini.search.topicreader.TsvIntTopicReader;
-import nl.tudelft.ir.feature.Features;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -125,7 +124,6 @@ public final class SearchCollectionWithBm25AndLambdaMart implements Closeable {
         List<RerankerCascade> cascades = new ArrayList<>();
 
         RerankerCascade cascade = new RerankerCascade();
-        cascade.add(new LambdaMARTReranker(Features.LAMBDAMART_DEFAULT_FEATURES));
         cascade.add(new ScoreTiesAdjusterReranker());
         cascades.add(cascade);
 

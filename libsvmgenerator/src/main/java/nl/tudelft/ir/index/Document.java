@@ -3,6 +3,7 @@ package nl.tudelft.ir.index;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class Document {
     private final String id;
@@ -40,6 +41,19 @@ public class Document {
         return wholeDocument;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Document document = (Document) o;
+        return id.equals(document.id) && wholeDocument.equals(document.wholeDocument) && title.equals(document.title) && url.equals(document.url) && body.equals(document.body);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, wholeDocument, title, url, body);
+    }
+
     public static class Field {
         private final String contents;
         private final Map<String, Long> vector;
@@ -69,6 +83,19 @@ public class Document {
 
         public List<String> getTerms() {
             return terms;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Field field = (Field) o;
+            return contents.equals(field.contents) && vector.equals(field.vector) && terms.equals(field.terms);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(contents, vector, terms);
         }
     }
 }

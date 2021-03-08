@@ -14,6 +14,8 @@ import nl.tudelft.ir.index.DocumentCollection;
 import nl.tudelft.ir.index.Index;
 import nl.tudelft.ir.index.LuceneIndex;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.TopDocs;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -24,10 +26,16 @@ import java.util.stream.Collectors;
 public class LambdaMARTReranker implements Reranker<Integer> {
 
     private final List<Feature> features;
+    private final Index index;
+    private final DocumentCollection documentCollection;
+    private final IndexReader reader;
     private final Ensemble ensemble;
 
-    public LambdaMARTReranker(List<Feature> features) {
+    public LambdaMARTReranker(List<Feature> features, Index index, DocumentCollection documentCollection, IndexReader reader) {
         this.features = features;
+        this.index = index;
+        this.documentCollection = documentCollection;
+        this.reader = reader;
 
         // Read model
         String fullText;
@@ -42,6 +50,63 @@ public class LambdaMARTReranker implements Reranker<Integer> {
         });
 
         ensemble = new Ensemble(lineByLine.getModel().toString());
+    }
+
+    public List<RerankedDocument> rerankTopDocs(TopDocs topDocs, List<String> queryTerms) {
+        Map<Document, Float> newScores = new HashMap<>();
+
+        for (int originalRank = 1; originalRank <= topDocs.scoreDocs.length; originalRank++) {
+            ScoreDoc scoreDoc = topDocs.scoreDocs[originalRank - 1];
+            int luceneDocId = scoreDoc.doc;
+            String docId = IndexReaderUtils.convertLuceneDocidToDocid(reader, luceneDocId);
+            Document document = index.retrieveById(docId);
+
+
+            DataPoint dataPoint = createDataPoint(queryTerms, document, documentCollection);
+
+            float score = ensemble.eval(dataPoint);
+            newScores.put(document, score);
+        }
+
+        List<Document> orderedDocuments = newScores.entrySet().stream()
+                .sorted(Collections.reverseOrder(Comparator.comparingDouble(Map.Entry::getValue)))
+                .limit(100)
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
+
+        List<RerankedDocument> rerankedDocuments = new ArrayList<>(orderedDocuments.size());
+        int rank = 1;
+        for (Document orderedDocument : orderedDocuments) {
+            rerankedDocuments.add(new RerankedDocument(rank, orderedDocument, newScores.get(orderedDocument)));
+
+            rank++;
+        }
+
+        return rerankedDocuments;
+    }
+
+    public static class RerankedDocument {
+        private final int rank;
+        private final Document document;
+        private final float score;
+
+        public RerankedDocument(int rank, Document document, float score) {
+            this.rank = rank;
+            this.document = document;
+            this.score = score;
+        }
+
+        public int getRank() {
+            return rank;
+        }
+
+        public Document getDocument() {
+            return document;
+        }
+
+        public float getScore() {
+            return score;
+        }
     }
 
     @Override

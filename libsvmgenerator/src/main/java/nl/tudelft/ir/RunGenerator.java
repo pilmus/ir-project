@@ -34,6 +34,7 @@ public class RunGenerator {
     public static void main(String[] args) throws IOException {
         long start = System.currentTimeMillis();
         IndexReader indexReader = IndexReaderUtils.getReader(args[0]);
+        String modelPath = args[1];
 
         String runId = "BM25LAMBDAMART100";
         String dataDirectory = "data";
@@ -47,7 +48,7 @@ public class RunGenerator {
         IndexSearcher searcher = new IndexSearcher(indexReader);
         QueryGenerator queryGenerator = new BagOfWordsQueryGenerator();
         Analyzer analyzer = DefaultEnglishAnalyzer.newDefaultInstance();
-        LambdaMARTReranker reranker = new LambdaMARTReranker(Features.LAMBDAMART_DEFAULT_FEATURES, index, documentCollection, indexReader);
+        LambdaMARTReranker reranker = new LambdaMARTReranker(Features.LAMBDAMART_DEFAULT_FEATURES, index, documentCollection, indexReader, modelPath);
 
         searcher.setSimilarity(new BM25Similarity());
 
@@ -133,6 +134,4 @@ public class RunGenerator {
             builder.append("\n");
         }
     }
-
-
 }

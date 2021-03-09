@@ -31,7 +31,7 @@ public class LambdaMARTReranker implements Reranker<Integer> {
     private final IndexReader reader;
     private final Ensemble ensemble;
 
-    public LambdaMARTReranker(List<Feature> features, Index index, DocumentCollection documentCollection, IndexReader reader) {
+    public LambdaMARTReranker(List<Feature> features, Index index, DocumentCollection documentCollection, IndexReader reader, String modelPath) {
         this.features = features;
         this.index = index;
         this.documentCollection = documentCollection;
@@ -40,7 +40,7 @@ public class LambdaMARTReranker implements Reranker<Integer> {
         // Read model
         String fullText;
         try {
-            fullText = Files.readString(Paths.get("/media/hd/ir-project/models/lambdamart"));
+            fullText = Files.readString(Paths.get(modelPath));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

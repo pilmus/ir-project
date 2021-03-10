@@ -50,7 +50,7 @@ public class RunGenerator {
         Analyzer analyzer = DefaultEnglishAnalyzer.newDefaultInstance();
         LambdaMARTReranker reranker = new LambdaMARTReranker(Features.LAMBDAMART_DEFAULT_FEATURES, index, documentCollection, indexReader, modelPath);
 
-        searcher.setSimilarity(new BM25Similarity(4.68f, 0.87f));
+        searcher.setSimilarity(new BM25LSimilarity(4.68f, 0.87f, 0.5f));
 
         System.out.println("Loading " + queriesPath + "...");
         Map<String, String> queries = Datasets.loadQueries(queriesPath);

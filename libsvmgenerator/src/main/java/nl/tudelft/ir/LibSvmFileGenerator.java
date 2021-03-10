@@ -27,7 +27,7 @@ public class LibSvmFileGenerator {
     public static void main(String[] args) throws IOException {
         IndexReader indexReader = IndexReaderUtils.getReader(args[0]);
 
-        String modus = "dev";
+        String modus = "test";
         String size = "";
 
         String dataDirectory = "data";
@@ -225,7 +225,7 @@ public class LibSvmFileGenerator {
 
     private List<Example> generatePositiveNegativeExamples(Map<String, String> queries, Map<String, QRel> qrels, Map<String, List<String>> top100) {
         return queries.entrySet().stream()
-                .map(entry -> {
+                .flatMap(entry -> {
                     String queryId = entry.getKey();
                     String query = entry.getValue();
 
@@ -238,12 +238,11 @@ public class LibSvmFileGenerator {
 
                     String negativeDocId = allNegativeDocIds.get(ThreadLocalRandom.current().nextInt(allNegativeDocIds.size()));
 
-                    return Arrays.asList(
+                    return Stream.of(
                             Example.positive(queryId, query, positiveDocId),
                             Example.negative(queryId, query, negativeDocId)
                     );
                 })
-                .flatMap(List::stream)
                 .collect(Collectors.toList());
     }
 

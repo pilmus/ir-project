@@ -40,7 +40,7 @@ public class RunGenerator {
         String dataDirectory = "data";
         String runDirectory = "runs";
 
-        Path outputPath = Paths.get(runDirectory, "bm25_lambdamart_rerank_top100.txt");
+        Path outputPath = Paths.get(runDirectory, "bm25.lambdamart.top100.txt");
         Path queriesPath = Paths.get(dataDirectory, "msmarco-doctest-queries.tsv");
 
         Index index = new LuceneIndex(indexReader);
@@ -50,7 +50,7 @@ public class RunGenerator {
         Analyzer analyzer = DefaultEnglishAnalyzer.newDefaultInstance();
         LambdaMARTReranker reranker = new LambdaMARTReranker(Features.LAMBDAMART_DEFAULT_FEATURES, index, documentCollection, indexReader, modelPath);
 
-        searcher.setSimilarity(new BM25Similarity());
+        searcher.setSimilarity(new BM25Similarity(4.68f, 0.87f));
 
         System.out.println("Loading " + queriesPath + "...");
         Map<String, String> queries = Datasets.loadQueries(queriesPath);

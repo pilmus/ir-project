@@ -43,16 +43,14 @@ public class BM25LRunGenerator {
         String dataDirectory = "data";
         String runDirectory = "runs";
 
-        Path outputPath = Paths.get(runDirectory, "bm25l.run.txt");
+        Path outputPath = Paths.get(runDirectory, "run.bm25l.k1.4.68.b.0.87.d.0.5.expanded.txt");
         Path queriesPath = Paths.get(dataDirectory, "msmarco-doctest-queries.tsv");
 
-        Index index = new LuceneIndex(indexReader);
-        DocumentCollection documentCollection = new DocumentCollection(index);
         IndexSearcher searcher = new IndexSearcher(indexReader);
         QueryGenerator queryGenerator = new BagOfWordsQueryGenerator();
         Analyzer analyzer = DefaultEnglishAnalyzer.newDefaultInstance();
 
-        searcher.setSimilarity(new BM25LSimilarity());
+        searcher.setSimilarity(new BM25LSimilarity(4.68f, 0.87f, 0.5f));
 
         System.out.println("Loading " + queriesPath + "...");
         Map<String, String> queries = Datasets.loadQueries(queriesPath);
@@ -67,19 +65,16 @@ public class BM25LRunGenerator {
                 .flatMap((entry) -> {
                     String queryId = entry.getKey();
                     String queryString = entry.getValue();
-                    List<String> queryTokens = AnalyzerUtils.analyze(analyzer, queryString);
 
                     Query query = queryGenerator.buildQuery(IndexArgs.CONTENTS, analyzer, queryString);
 
                     TopDocs rs = search(searcher, query);
 
-
                     Stream<BM25LRunGenerator.SearchResult> searchResultStream = Arrays.stream(rs.scoreDocs)
                             .map(scoreDoc -> {
                                 int luceneDocId = scoreDoc.doc;
                                 String docId = IndexReaderUtils.convertLuceneDocidToDocid(indexReader, luceneDocId);
-                                Document document = index.retrieveById(docId);
-                                return new BM25LRunGenerator.SearchResult(queryId, document.getId(), ArrayUtils.indexOf(rs.scoreDocs, scoreDoc) + 1, scoreDoc.score);
+                                return new SearchResult(queryId, docId, ArrayUtils.indexOf(rs.scoreDocs, scoreDoc) + 1, scoreDoc.score);
                             });
 
 
@@ -88,11 +83,7 @@ public class BM25LRunGenerator {
                 })
                 .collect(Collectors.toList());
 
-        try {
-            progressThread.join();
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+        progressThread.interrupt();
 
         System.out.println("Writing result to file...");
         StringBuilder output = new StringBuilder();

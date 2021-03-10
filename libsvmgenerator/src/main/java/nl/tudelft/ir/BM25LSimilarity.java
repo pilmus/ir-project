@@ -1,7 +1,6 @@
 package nl.tudelft.ir;
 
 import org.apache.lucene.index.FieldInvertState;
-import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.TermStatistics;
@@ -22,7 +21,6 @@ class BM25LSimilarity extends Similarity {
 
 
     public BM25LSimilarity(float k1, float b, float d) {
-
         this.discountOverlaps = true;
         if (Float.isFinite(k1) && !(k1 < 0.0F)) {
             if (!Float.isNaN(b) && !(b < 0.0F) && !(b > 1.0F)) {
@@ -89,15 +87,11 @@ class BM25LSimilarity extends Similarity {
      */
     public final long computeNorm(FieldInvertState state) {
         int numTerms;
-        if (state.getIndexOptions() == IndexOptions.DOCS && state.getIndexCreatedVersionMajor() >= 8) {
-            numTerms = state.getUniqueTermCount();
-        } else if (this.discountOverlaps) {
-            numTerms = state.getLength() - state.getNumOverlap();
-        } else {
-            numTerms = state.getLength();
-        }
 
-        return (long) SmallFloat.intToByte4(numTerms);
+        numTerms = state.getLength();
+
+
+        return SmallFloat.intToByte4(numTerms);
     }
 
     public Explanation idfExplain(CollectionStatistics collectionStats, TermStatistics termStats) {
@@ -160,7 +154,6 @@ class BM25LSimilarity extends Similarity {
         private final float k1;
         private final float b;
         private final float d;
-        private final float dDivK1;
         private final Explanation idf;
         private final float avgdl;
         private final float[] cache;
@@ -175,13 +168,29 @@ class BM25LSimilarity extends Similarity {
             this.d = d;
             this.cache = cache;
             this.weight = (k1 + 1) * boost * idf.getValue().floatValue();
-            this.dDivK1 = d/k1;
         }
 
+        /**
+         * Score is computed as follows:
+         *
+         * score = idf * (k1 + 1) (ctd + d) / (k1 + ctd + d)
+         *
+         * ctd = freq / (1 - b + b * (doclen/avglen))
+         * norm = k1 * (1 - b + b * (doclen/avglen)) --> (1 - b + b * (doclen/avglen)) = norm / k1
+         *
+         * ctd = freq / (norm / k1) = k1 * freq / norm
+         *
+         * score = idf * (k1 + 1) (k1 * freq / norm + d) / (k1 + k1 * freq / norm + d)
+         *
+         * @param freq
+         * @param encodedNorm
+         * @return
+         */
         public float score(float freq, long encodedNorm) {
             double norm = this.cache[(byte) ((int) encodedNorm) & 255];
-            double dDivK1Norm = dDivK1 * norm;
-            return (float) (this.weight * (freq * dDivK1Norm) / (freq + norm + dDivK1Norm));
+//            idf * (k1 + 1) (k1 * freq / norm + d) / (k1 + k1 * freq / norm + d)
+            return (float) (this.boost * this.idf.getValue().floatValue() * (this.k1 + 1) * (this.k1 * freq / norm + this.d) / (this.k1 + this.k1 * freq / norm + d));
+
         }
 
         public Explanation explain(Explanation freq, long encodedNorm) {
@@ -205,7 +214,7 @@ class BM25LSimilarity extends Similarity {
             }
 
             subs.add(Explanation.match(this.avgdl, "avgdl, average length of field", new Explanation[0]));
-            float tfNormValue = d + (float)freq.getValue() / (1 - b + b * doclen/this.avgdl);
+            float tfNormValue = d + (float) freq.getValue() / (1 - b + b * doclen / this.avgdl);
             subs.add(Explanation.match(tfNormValue, "tfNormValue, computed as d + freq / (1 - b + b * dl / avgdl)"));
             return Explanation.match(((k1 + 1) * tfNormValue) / (k1 + tfNormValue),
                     "tfNorm, computed as ((k1 + 1) * tfNormValue) / (k1 + tfNormValue) from:", subs);

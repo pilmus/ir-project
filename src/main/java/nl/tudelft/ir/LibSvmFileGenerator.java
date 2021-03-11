@@ -2,6 +2,8 @@ package nl.tudelft.ir;
 
 import io.anserini.analysis.AnalyzerUtils;
 import io.anserini.index.IndexReaderUtils;
+import nl.tudelft.ir.dataset.Datasets;
+import nl.tudelft.ir.dataset.QRel;
 import nl.tudelft.ir.feature.Feature;
 import nl.tudelft.ir.feature.Features;
 import nl.tudelft.ir.index.Document;
@@ -13,16 +15,30 @@ import org.apache.lucene.index.IndexReader;
 
 import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class LibSvmFileGenerator {
+
+    private final Index index;
+    private final Path queriesPath;
+    private final Path top100Path;
+    private final Path qrelsPath;
+    private final List<Feature> features;
+
+    public LibSvmFileGenerator(Index index, Path queriesPath, Path top100Path, Path qrelsPath, List<Feature> features) {
+        this.index = index;
+        this.queriesPath = queriesPath;
+        this.top100Path = top100Path;
+        this.qrelsPath = qrelsPath;
+        this.features = features;
+    }
 
     public static void main(String[] args) throws IOException {
         IndexReader indexReader = IndexReaderUtils.getReader(args[0]);
@@ -49,34 +65,20 @@ public class LibSvmFileGenerator {
         }
     }
 
-    private final Index index;
-    private final Path queriesPath;
-    private final Path top100Path;
-    private final Path qrelsPath;
-    private final List<Feature> features;
-
-    public LibSvmFileGenerator(Index index, Path queriesPath, Path top100Path, Path qrelsPath, List<Feature> features) {
-        this.index = index;
-        this.queriesPath = queriesPath;
-        this.top100Path = top100Path;
-        this.qrelsPath = qrelsPath;
-        this.features = features;
-    }
-
     public void generatePositiveNegative(Path outputPath) {
         long start = System.currentTimeMillis();
 
         System.out.println("Loading " + queriesPath + "...");
-        Map<String, String> queries = loadQueries(queriesPath);
+        Map<String, String> queries = Datasets.loadQueries(queriesPath);
 
         // This query does not seem to have a top100 entry
         queries.remove("502557");
 
         System.out.println("Loading " + top100Path + "...");
-        Map<String, List<String>> top100 = loadTop100(top100Path);
+        Map<String, List<String>> top100 = Datasets.loadTop100(top100Path);
 
         System.out.println("Loading " + qrelsPath + "...");
-        Map<String, QRel> qrels = loadQrels(qrelsPath);
+        Map<String, QRel> qrels = Datasets.loadQrels(qrelsPath);
 
         removePositiveExamplesFromTop100(qrels, top100);
 
@@ -125,13 +127,13 @@ public class LibSvmFileGenerator {
         long start = System.currentTimeMillis();
 
         System.out.println("Loading " + queriesPath + "...");
-        Map<String, String> queries = loadQueries(queriesPath);
+        Map<String, String> queries = Datasets.loadQueries(queriesPath);
 
         // This query does not seem to have a top100 entry
         queries.remove("502557");
 
         System.out.println("Loading " + top100Path + "...");
-        Map<String, List<String>> top100 = loadTop100(top100Path);
+        Map<String, List<String>> top100 = Datasets.loadTop100(top100Path);
 
         System.out.println("Generating top100 examples...");
         List<Example> examples = generateTop100Examples(queries, top100);
@@ -174,51 +176,9 @@ public class LibSvmFileGenerator {
         System.out.println("Done in " + String.format("%.1f", (float) duration / 1000) + "s");
     }
 
-    private Map<String, String> loadQueries(Path path) {
-        Map<String, String> queries = new HashMap<>();
-
-        readCsv(path, "\t").forEach(row -> {
-            // qid query
-            queries.put(row[0], row[1]);
-        });
-
-        return queries;
-    }
-
-    private Map<String, List<String>> loadTop100(Path path) {
-        Map<String, List<String>> top100 = new HashMap<>();
-
-        readCsv(path, " ").forEach(row -> {
-            String qid = row[0];
-            String docId = row[2];
-
-            if (top100.containsKey(qid)) {
-                top100.get(qid).add(docId);
-            } else {
-                top100.put(qid, new ArrayList<>(Collections.singleton(docId)));
-            }
-        });
-
-        return top100;
-    }
-
-    private Map<String, QRel> loadQrels(Path path) {
-        Map<String, QRel> qrels = new HashMap<>();
-
-        readCsv(path, " ").forEach(row -> {
-            String qid = row[0];
-            String docId = row[2];
-            String label = row[3];
-
-            qrels.put(qid, new QRel(qid, docId, label));
-        });
-
-        return qrels;
-    }
-
     private void removePositiveExamplesFromTop100(Map<String, QRel> qrels, Map<String, List<String>> top100) {
         for (String queryId : top100.keySet()) {
-            String positiveDocId = qrels.get(queryId).docId;
+            String positiveDocId = qrels.get(queryId).getDocId();
             top100.get(queryId).remove(positiveDocId);
         }
     }
@@ -229,7 +189,7 @@ public class LibSvmFileGenerator {
                     String queryId = entry.getKey();
                     String query = entry.getValue();
 
-                    String positiveDocId = qrels.get(queryId).docId;
+                    String positiveDocId = qrels.get(queryId).getDocId();
 
                     List<String> allNegativeDocIds = top100.get(queryId);
                     if (allNegativeDocIds == null) {
@@ -260,14 +220,6 @@ public class LibSvmFileGenerator {
                 .collect(Collectors.toList());
     }
 
-    private Stream<String[]> readCsv(Path path, String delimiter) {
-        try {
-            return Files.lines(path).map(line -> line.split(delimiter));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     private LibSvmEntry generateLibSvmEntry(Example example, DocumentCollection documentCollection) {
         List<String> queryTerms = AnalyzerUtils.analyze(example.query);
         Document document = documentCollection.find(example.docId);
@@ -275,18 +227,6 @@ public class LibSvmFileGenerator {
         float[] featuresVec = Features.generateVector(features, queryTerms, document, documentCollection);
 
         return new LibSvmEntry(example.label, example.queryId, featuresVec, example.docId);
-    }
-
-    private static class QRel {
-        String qid;
-        String docId;
-        String label;
-
-        private QRel(String qid, String docId, String label) {
-            this.qid = qid;
-            this.docId = docId;
-            this.label = label;
-        }
     }
 
     private static class Example {

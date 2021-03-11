@@ -24,7 +24,7 @@ public class LuceneIndex implements Index {
     public Map<String, Long> getDocumentVector(String docId) {
         try {
             return IndexReaderUtils.getDocumentVector(reader, docId);
-        } catch (IOException| NotStoredException e) {
+        } catch (IOException | NotStoredException e) {
             throw new RuntimeException(e);
         }
     }

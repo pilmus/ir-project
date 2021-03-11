@@ -40,6 +40,20 @@ abstract public class Datasets {
         return queries;
     }
 
+    public static Map<String, QRel> loadQrels(Path path) {
+        Map<String, QRel> qrels = new HashMap<>();
+
+        readCsv(path, " ").forEach(row -> {
+            String qid = row[0];
+            String docId = row[2];
+            String label = row[3];
+
+            qrels.put(qid, new QRel(qid, docId, label));
+        });
+
+        return qrels;
+    }
+
     private static Stream<String[]> readCsv(Path path, String delimiter) {
         try {
             return Files.lines(path).map(line -> line.split(delimiter));
@@ -47,4 +61,5 @@ abstract public class Datasets {
             throw new RuntimeException(e);
         }
     }
+
 }

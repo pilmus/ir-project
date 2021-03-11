@@ -1,15 +1,5 @@
 package nl.tudelft.ir.feature;
 
-import io.anserini.analysis.AnalyzerUtils;
-import io.anserini.index.IndexArgs;
-import io.anserini.index.IndexReaderUtils;
-import io.anserini.index.NotStoredException;
-import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.Term;
-
-import java.io.IOException;
-import java.util.Map;
-
 public abstract class AbstractFeature implements Feature {
     protected double sum(double[] vector) {
         float s = 0;

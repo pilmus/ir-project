@@ -17,7 +17,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.similarities.BM25Similarity;
+import org.apache.lucene.search.similarities.Similarity;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -29,28 +29,35 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class RunGenerator {
+public class RerankRunGenerator {
 
     public static void main(String[] args) throws IOException {
-        long start = System.currentTimeMillis();
         IndexReader indexReader = IndexReaderUtils.getReader(args[0]);
         String modelPath = args[1];
 
-        String runId = "BM25LAMBDAMART100";
         String dataDirectory = "data";
         String runDirectory = "runs";
 
         Path outputPath = Paths.get(runDirectory, "bm25.lambdamart.top100.txt");
         Path queriesPath = Paths.get(dataDirectory, "msmarco-doctest-queries.tsv");
 
+        Similarity firstPhaseSimilarity = new BM25LSimilarity(4.68f, 0.87f, 0.5f);
+
+        doRun(indexReader, firstPhaseSimilarity, modelPath, outputPath, queriesPath);
+    }
+
+    private static void doRun(IndexReader indexReader, Similarity similarity, String lambdaMartModelPath, Path outputPath, Path queriesPath) {
+        long start = System.currentTimeMillis();
+
         Index index = new LuceneIndex(indexReader);
         DocumentCollection documentCollection = new DocumentCollection(index);
         IndexSearcher searcher = new IndexSearcher(indexReader);
         QueryGenerator queryGenerator = new BagOfWordsQueryGenerator();
         Analyzer analyzer = DefaultEnglishAnalyzer.newDefaultInstance();
-        LambdaMARTReranker reranker = new LambdaMARTReranker(Features.LAMBDAMART_DEFAULT_FEATURES, index, documentCollection, indexReader, modelPath);
 
-        searcher.setSimilarity(new BM25LSimilarity(4.68f, 0.87f, 0.5f));
+        LambdaMARTReranker reranker = new LambdaMARTReranker(Features.LAMBDAMART_DEFAULT_FEATURES, index, documentCollection, indexReader, lambdaMartModelPath);
+
+        searcher.setSimilarity(similarity);
 
         System.out.println("Loading " + queriesPath + "...");
         Map<String, String> queries = Datasets.loadQueries(queriesPath);
@@ -70,10 +77,10 @@ public class RunGenerator {
                     Query query = queryGenerator.buildQuery(IndexArgs.CONTENTS, analyzer, queryString);
 
                     TopDocs rs = search(searcher, query);
-                    List<LambdaMARTReranker.RerankedDocument> reranked = reranker.rerankTopDocs(rs, queryTokens);
+                    List<LambdaMARTReranker.RankedDocument> reranked = reranker.rerankTopDocs(rs, queryTokens);
 
                     Stream<SearchResult> searchResultStream = reranked.stream()
-                            .map(rerankedDocument -> new SearchResult(queryId, rerankedDocument.getDocument().getId(), rerankedDocument.getRank(), rerankedDocument.getScore()));
+                            .map(rankedDocument -> new SearchResult(queryId, rankedDocument.getDocument().getId(), rankedDocument.getRank(), rankedDocument.getScore()));
 
                     doneCounter.incrementAndGet();
                     return searchResultStream;
@@ -88,7 +95,7 @@ public class RunGenerator {
 
         System.out.println("Writing result to file...");
         StringBuilder output = new StringBuilder();
-        searchResults.forEach(entry -> entry.write(output, runId));
+        searchResults.forEach(entry -> entry.write(output, "BM25L_LambdaMART"));
 
         try (FileWriter outputFile = new FileWriter(outputPath.toFile())) {
             outputFile.write(output.toString());

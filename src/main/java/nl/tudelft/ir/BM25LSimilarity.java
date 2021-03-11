@@ -12,24 +12,27 @@ import java.util.ArrayList;
 import java.util.List;
 
 class BM25LSimilarity extends Similarity {
+    private static final float[] LENGTH_TABLE = new float[256];
+
+    static {
+        for (int i = 0; i < 256; ++i) {
+            LENGTH_TABLE[i] = (float) SmallFloat.byte4ToInt((byte) i);
+        }
+
+    }
+
     private final float k1;
     private final float b;
     private final float d;
-
     protected boolean discountOverlaps;
-    private static final float[] LENGTH_TABLE = new float[256];
-
 
     public BM25LSimilarity(float k1, float b, float d) {
         this.discountOverlaps = true;
         if (Float.isFinite(k1) && !(k1 < 0.0F)) {
             if (!Float.isNaN(b) && !(b < 0.0F) && !(b > 1.0F)) {
                 if (!Float.isNaN(d) && !(d < 0.0f) && !(d > 1.5f)) {
-
                     this.k1 = k1;
                     this.b = b;
-
-
                     this.d = d;
                 } else {
                     throw new IllegalArgumentException("illegal d value: " + d + ", must be between 0 and 1.5");
@@ -67,15 +70,15 @@ class BM25LSimilarity extends Similarity {
     /**
      * Copied from <code>BM25Similarity</code>
      */
-    public void setDiscountOverlaps(boolean v) {
-        this.discountOverlaps = v;
+    public boolean getDiscountOverlaps() {
+        return this.discountOverlaps;
     }
 
     /**
      * Copied from <code>BM25Similarity</code>
      */
-    public boolean getDiscountOverlaps() {
-        return this.discountOverlaps;
+    public void setDiscountOverlaps(boolean v) {
+        this.discountOverlaps = v;
     }
 
     /**
@@ -142,13 +145,6 @@ class BM25LSimilarity extends Similarity {
         return this.b;
     }
 
-    static {
-        for (int i = 0; i < 256; ++i) {
-            LENGTH_TABLE[i] = (float) SmallFloat.byte4ToInt((byte) i);
-        }
-
-    }
-
     private static class BM25LScorer extends SimScorer {
         private final float boost;
         private final float k1;
@@ -172,14 +168,14 @@ class BM25LSimilarity extends Similarity {
 
         /**
          * Score is computed as follows:
-         *
+         * <p>
          * score = idf * (k1 + 1) (ctd + d) / (k1 + ctd + d)
-         *
+         * <p>
          * ctd = freq / (1 - b + b * (doclen/avglen))
          * norm = k1 * (1 - b + b * (doclen/avglen)) --> (1 - b + b * (doclen/avglen)) = norm / k1
-         *
+         * <p>
          * ctd = freq / (norm / k1) = k1 * freq / norm
-         *
+         * <p>
          * score = idf * (k1 + 1) (k1 * freq / norm + d) / (k1 + k1 * freq / norm + d)
          *
          * @param freq

@@ -1,26 +1,18 @@
 package nl.tudelft.ir;
 
-import io.anserini.analysis.AnalyzerUtils;
 import io.anserini.analysis.DefaultEnglishAnalyzer;
 import io.anserini.index.IndexArgs;
 import io.anserini.index.IndexReaderUtils;
 import io.anserini.search.query.BagOfWordsQueryGenerator;
 import io.anserini.search.query.QueryGenerator;
 import nl.tudelft.ir.dataset.Datasets;
-import nl.tudelft.ir.feature.Features;
-import nl.tudelft.ir.index.Document;
-import nl.tudelft.ir.index.DocumentCollection;
-import nl.tudelft.ir.index.Index;
-import nl.tudelft.ir.index.LuceneIndex;
 import nl.tudelft.ir.util.ProgressIndicator;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.similarities.BM25Similarity;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -70,7 +62,7 @@ public class BM25LRunGenerator {
 
                     TopDocs rs = search(searcher, query);
 
-                    Stream<BM25LRunGenerator.SearchResult> searchResultStream = Arrays.stream(rs.scoreDocs)
+                    Stream<SearchResult> searchResultStream = Arrays.stream(rs.scoreDocs)
                             .map(scoreDoc -> {
                                 int luceneDocId = scoreDoc.doc;
                                 String docId = IndexReaderUtils.convertLuceneDocidToDocid(indexReader, luceneDocId);

@@ -1,11 +1,13 @@
 # IR Project Experiments
 
-This repository contains all code necessary to reproduce the experiments in the paper.
+This repository contains all code necessary to reproduce the experiments in the project.
 
 ## Prerequisites
 
 - A fully indexed MS MARCO
   dataset. [Follow this guide](https://github.com/castorini/anserini/blob/master/docs/experiments-msmarco-doc.md).
+- A fully indexed MS MARCO
+  dataset, augmented with predicted queries. [Follow this guide](https://github.com/castorini/docTTTTTquery#Replicating-MS-MARCO-Document-Ranking-Results-with-Anserini).
 - Java 11+, Maven
 
 ## Performing experiments
